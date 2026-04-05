@@ -245,6 +245,12 @@
     color:rgba(240,235,229,0.60);
   }
   .btn-sub:hover{color:var(--text);background:rgba(255,255,255,0.08)}
+  .btn-stop{
+    padding:8px 14px;font-size:0.66rem;font-weight:400;letter-spacing:0.06em;
+    background:rgba(180,60,60,0.12);color:rgba(255,140,140,0.70);
+    border-color:rgba(180,60,60,0.20);margin-top:8px;width:100%;
+  }
+  .btn-stop:hover{background:rgba(180,60,60,0.25);color:rgba(255,160,160,1);}
 
   /* ===== COLLAPSIBLE SECTION ===== */
   .section-toggle{
@@ -415,16 +421,25 @@
 
       <!-- Timer -->
       <div class="timer-section">
-        <div class="timer-time" id="timerDisplay">25:00</div>
-        <div class="timer-label" id="timerLabel">スタート</div>
-        <div class="progress-bar-wrap">
-          <div class="progress-bar" id="progressBar"></div>
+        <div id="timerArea">
+          <div class="timer-time" id="timerDisplay">25:00</div>
+          <div class="timer-label" id="timerLabel">スタート</div>
+          <div class="progress-bar-wrap">
+            <div class="progress-bar" id="progressBar"></div>
+          </div>
+          <div class="bg-bar" id="bgBar"></div>
+          <div class="controls">
+            <button class="g-btn btn-sub" onclick="resetTimer()">リセット</button>
+            <button class="g-btn btn-main" id="startBtn" onclick="toggleTimer()">スタート</button>
+            <button class="g-btn btn-sub" onclick="skipSession()">スキップ</button>
+            <button class="g-btn btn-stop" onclick="stopTimer()">■ 終了</button>
+          </div>
         </div>
-        <div class="bg-bar" id="bgBar"></div>
-        <div class="controls">
-          <button class="g-btn btn-sub" onclick="resetTimer()">リセット</button>
-          <button class="g-btn btn-main" id="startBtn" onclick="toggleTimer()">スタート</button>
-          <button class="g-btn btn-sub" onclick="skipSession()">スキップ</button>
+        <div id="timerOffArea" style="display:none;padding:18px 0 8px;text-align:center;">
+          <div style="font-size:0.7rem;color:var(--text-dim);letter-spacing:0.18em;">BGM モード</div>
+        </div>
+        <div style="text-align:center;margin-top:10px;">
+          <button class="g-btn btn-sub" id="timerOffBtn" onclick="toggleTimerOff()" style="font-size:0.62rem;padding:6px 16px;opacity:0.6;">タイマー OFF</button>
         </div>
       </div>
     </div>
@@ -541,7 +556,7 @@
 <script>
 // ===== STATE =====
 let audioCtx=null,masterGain=null,currentNodes=[],isPlaying=false,timerInterval=null;
-let currentMode='work',timeRemaining=25*60,totalTime=25*60;
+let currentMode='work',timeRemaining=25*60,totalTime=25*60,autoStartTimer=null;
 let selectedTrack=0,volume=0.4,completedSessions=0,totalMinutes=0,streak=0,isTimerRunning=false;
 let playMode='select',currentTrackIndex=0;
 const MAX_TRACKS=10,STORAGE_KEY='otonagi_';
@@ -896,16 +911,59 @@ function startTimer(){
   startMusic();
   timerInterval=setInterval(()=>{timeRemaining--;if(timeRemaining<=0){completeSession();return;}updateTimerDisplay();updateProgress();},1000);
 }
-function pauseTimer(){isTimerRunning=false;clearInterval(timerInterval);document.getElementById('startBtn').textContent='再開';document.getElementById('timerLabel').textContent='一時停止';stopMusic();}
-function resetTimer(){clearInterval(timerInterval);isTimerRunning=false;stopMusic();const d={work:+document.getElementById('workDuration').value,short:+document.getElementById('shortBreakDuration').value,long:+document.getElementById('longBreakDuration').value};totalTime=d[currentMode]*60;timeRemaining=totalTime;updateTimerDisplay();updateProgress();document.getElementById('startBtn').textContent='スタート';document.getElementById('timerLabel').textContent='スタート';}
+function pauseTimer(){isTimerRunning=false;clearInterval(timerInterval);if(autoStartTimer){clearTimeout(autoStartTimer);autoStartTimer=null;}document.getElementById('startBtn').textContent='再開';document.getElementById('timerLabel').textContent='一時停止';stopMusic();}
+function resetTimer(){clearInterval(timerInterval);if(autoStartTimer){clearTimeout(autoStartTimer);autoStartTimer=null;}isTimerRunning=false;stopMusic();const d={work:+document.getElementById('workDuration').value,short:+document.getElementById('shortBreakDuration').value,long:+document.getElementById('longBreakDuration').value};totalTime=d[currentMode]*60;timeRemaining=totalTime;updateTimerDisplay();updateProgress();document.getElementById('startBtn').textContent='スタート';document.getElementById('timerLabel').textContent='スタート';}
+function stopTimer(){clearInterval(timerInterval);if(autoStartTimer){clearTimeout(autoStartTimer);autoStartTimer=null;}isTimerRunning=false;stopMusic();currentMode='work';const workMin=+document.getElementById('workDuration').value;totalTime=workMin*60;timeRemaining=totalTime;updateTimerDisplay();updateProgress();document.getElementById('startBtn').textContent='スタート';document.getElementById('timerLabel').textContent='スタート';document.title='音凪';}
 function skipSession(){completeSession();}
+function toggleTimerOff(){
+  const area=document.getElementById('timerArea');
+  const offArea=document.getElementById('timerOffArea');
+  const btn=document.getElementById('timerOffBtn');
+  const isOff=area.style.display==='none';
+  if(isOff){
+    // BGMモード → タイマーONに戻す
+    area.style.display='';
+    offArea.style.display='none';
+    btn.textContent='タイマー OFF';btn.style.opacity='0.6';
+    stopMusic();
+  }else{
+    // タイマー → BGMのみモードへ
+    stopTimer();
+    area.style.display='none';
+    offArea.style.display='';
+    btn.textContent='タイマー ON';btn.style.opacity='1';
+    // BGMをループ再生
+    if(selectedTrack!==-1&&tracks[selectedTrack]){
+      initAudio();isPlaying=true;updateNowPlaying();
+      mp3Player.src=tracks[selectedTrack].data;
+      mp3Player.volume=volume;mp3Player.loop=true;
+      mp3Player.play().catch(()=>{});
+      updateViz();
+    }
+  }
+}
 function completeSession(){
   clearInterval(timerInterval);isTimerRunning=false;stopMusic();playNotif();
-  cycleBg(); // switch scene on session change
-  if(currentMode==='work'){completedSessions++;totalMinutes+=+document.getElementById('workDuration').value;streak++;updateStats();
-    const iv=+document.getElementById('longBreakInterval').value;switchMode(completedSessions%iv===0?'long':'short');
-  }else switchMode('work');
+  cycleBg();
+  if(currentMode==='work'){
+    completedSessions++;totalMinutes+=+document.getElementById('workDuration').value;streak++;updateStats();
+    const iv=+document.getElementById('longBreakInterval').value;
+    currentMode=completedSessions%iv===0?'long':'short';
+  }else{
+    currentMode='work';
+  }
+  // 次のセッション用に別の曲をランダム選択
+  const avail=[];for(let i=0;i<MAX_TRACKS;i++){if(tracks[i])avail.push(i);}
+  if(avail.length>1){
+    let next;
+    do{next=avail[0|Math.random()*avail.length];}while(next===selectedTrack);
+    selectedTrack=next;highlightTrack();
+  }
+  // 次のセッションを1.5秒後に自動スタート（チャイムが鳴り終わるのを待つ）
+  const d={work:+document.getElementById('workDuration').value,short:+document.getElementById('shortBreakDuration').value,long:+document.getElementById('longBreakDuration').value};
+  totalTime=d[currentMode]*60;timeRemaining=totalTime;updateTimerDisplay();updateProgress();
   document.getElementById('timerLabel').textContent='完了';
+  autoStartTimer=setTimeout(()=>{startTimer();},1500);
 }
 function playNotif(){
   if(!audioCtx)initAudio();const t=audioCtx.currentTime;
