@@ -547,7 +547,8 @@
           ondrop="handleDrop(event)" onclick="document.getElementById('mp3FileInput').click()">
           <div class="dz-text">📂 タップしてMP3を読み込む</div>
           <div class="dz-sub">自動保存・次回起動時も復元</div>
-          <input type="file" id="mp3FileInput" accept="audio/*" multiple style="display:none" onchange="handleFileSelect(event)">
+          <div class="dz-sub" style="margin-top:2px;opacity:0.5;">iPhone/iPad: ファイル → Google Drive からも選択可</div>
+          <input type="file" id="mp3FileInput" accept=".mp3,.m4a,.aac,.wav,.ogg,.flac,.opus" multiple style="display:none" onchange="handleFileSelect(event)">
           <div id="loadedFilesInfo" style="margin-top:8px;font-size:0.55rem;color:var(--green)"></div>
         </div>
 
