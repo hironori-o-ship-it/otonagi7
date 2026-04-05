@@ -226,6 +226,7 @@
     position:relative;overflow:hidden;
     white-space:nowrap;
     background:linear-gradient(160deg,rgba(255,255,255,0.10),rgba(255,255,255,0.03));
+    text-shadow:0 1px 4px rgba(0,0,0,0.55),0 0 12px rgba(0,0,0,0.30);
   }
   .g-btn::before{
     content:'';position:absolute;top:0;left:0;right:0;height:55%;
@@ -246,6 +247,7 @@
     width:120px;
     background:linear-gradient(160deg,rgba(212,165,116,0.28),rgba(212,165,116,0.10));
     border-color:rgba(212,165,116,0.40);color:var(--accent2);
+    text-shadow:0 1px 6px rgba(0,0,0,0.60),0 0 16px rgba(212,165,116,0.35);
     box-shadow:
       0 8px 32px rgba(212,165,116,0.20),
       0 3px 10px rgba(0,0,0,0.35),
@@ -255,26 +257,29 @@
   .btn-main:hover{
     box-shadow:0 14px 40px rgba(212,165,116,0.28),0 4px 12px rgba(0,0,0,0.35),inset 0 1px 0 rgba(255,255,255,0.24);
     border-color:rgba(212,165,116,0.55);
+    text-shadow:0 1px 6px rgba(0,0,0,0.60),0 0 22px rgba(212,165,116,0.55);
   }
   .btn-sub{
     padding:11px 0;font-size:0.78rem;font-weight:400;letter-spacing:0.06em;
     width:120px;
-    color:rgba(240,235,229,0.75);
+    color:rgba(240,235,229,0.80);
+    text-shadow:0 1px 4px rgba(0,0,0,0.55),0 0 10px rgba(255,255,255,0.08);
   }
-  .btn-sub:hover{color:var(--text);background:linear-gradient(160deg,rgba(255,255,255,0.14),rgba(255,255,255,0.05))}
+  .btn-sub:hover{color:var(--text);background:linear-gradient(160deg,rgba(255,255,255,0.14),rgba(255,255,255,0.05));text-shadow:0 1px 4px rgba(0,0,0,0.55),0 0 14px rgba(255,255,255,0.15)}
   .btn-stop{
     padding:11px 0;font-size:0.78rem;font-weight:400;letter-spacing:0.06em;
     width:120px;
     background:linear-gradient(160deg,rgba(180,60,60,0.22),rgba(180,60,60,0.08));
-    color:rgba(255,150,150,0.85);
+    color:rgba(255,160,160,0.90);
     border-color:rgba(200,80,80,0.35);
+    text-shadow:0 1px 6px rgba(0,0,0,0.60),0 0 14px rgba(255,100,100,0.30);
     box-shadow:
       0 8px 32px rgba(180,60,60,0.18),
       0 3px 10px rgba(0,0,0,0.35),
       inset 0 1px 0 rgba(255,255,255,0.16),
       inset 0 -1px 0 rgba(0,0,0,0.10);
   }
-  .btn-stop:hover{background:linear-gradient(160deg,rgba(180,60,60,0.35),rgba(180,60,60,0.15));color:rgba(255,170,170,1);}
+  .btn-stop:hover{background:linear-gradient(160deg,rgba(180,60,60,0.35),rgba(180,60,60,0.15));color:rgba(255,180,180,1);text-shadow:0 1px 6px rgba(0,0,0,0.60),0 0 20px rgba(255,100,100,0.50);}
 
   /* ===== COLLAPSIBLE SECTION ===== */
   .section-toggle{
@@ -468,7 +473,7 @@
           <div style="font-size:0.7rem;color:var(--text-dim);letter-spacing:0.18em;">BGM モード</div>
         </div>
         <div style="text-align:center;margin-top:14px;padding-bottom:18px;">
-          <button class="g-btn btn-sub" id="timerOffBtn" onclick="toggleTimerOff()" style="font-size:0.62rem;padding:6px 20px;opacity:0.6;width:auto;">タイマー OFF</button>
+          <button class="g-btn btn-sub" id="timerOffBtn" onclick="toggleTimerOff()" style="font-size:0.62rem;padding:6px 20px;opacity:0.7;width:auto;text-shadow:0 1px 4px rgba(0,0,0,0.55),0 0 10px rgba(255,255,255,0.10);">タイマー OFF</button>
         </div>
       </div>
     </div>
