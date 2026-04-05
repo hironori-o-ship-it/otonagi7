@@ -1,0 +1,972 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+<title>音凪 - OTONAGI</title>
+<meta name="description" content="音凪 — 集中と静寂のポモドーロタイマー。BGM付きで作業に没頭できるWebアプリ。">
+<meta name="theme-color" content="#0b1220">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="音凪">
+<link rel="manifest" href="manifest.json">
+<link rel="icon" href="icon.svg" type="image/svg+xml">
+<link rel="apple-touch-icon" href="icon-192.png">
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Yuji+Boku&family=Noto+Sans+JP:wght@300;400;500;600&family=Cormorant+Garamond:wght@300;400;500&display=swap');
+
+  *{margin:0;padding:0;box-sizing:border-box}
+
+  :root{
+    --glass:rgba(255,255,255,0.07);
+    --glass-deep:rgba(255,255,255,0.03);
+    --glass-light:rgba(255,255,255,0.10);
+    --glass-border:rgba(255,255,255,0.10);
+    --glass-border-light:rgba(255,255,255,0.16);
+    --accent:#d4a574;
+    --accent2:#e8c4a0;
+    --accent-warm:#d4896a;
+    --accent-glow:rgba(212,165,116,0.25);
+    --accent-glow2:rgba(212,165,116,0.08);
+    --green:#7ddcb5;
+    --pink:#d4896a;
+    --text:#f0ebe5;
+    --text-dim:rgba(240,235,229,0.40);
+    --text-mid:rgba(240,235,229,0.65);
+    --shadow1:rgba(0,0,0,0.40);
+    --shadow2:rgba(0,0,0,0.22);
+    --r:22px;
+    --r-sm:14px;
+  }
+
+  body{
+    font-family:'Noto Sans JP',sans-serif;
+    background:#0b1220;
+    color:var(--text);
+    min-height:100vh;min-height:100dvh;
+    display:flex;flex-direction:column;align-items:center;
+    overflow-x:hidden;
+    -webkit-font-smoothing:antialiased;
+  }
+
+  /* ===== BG ===== */
+  .bg{position:fixed;inset:0;z-index:0;pointer-events:none;overflow:hidden}
+  .bg::before{content:'';position:absolute;width:140%;height:140%;top:-20%;left:-20%;
+    background:radial-gradient(ellipse at 30% 15%,rgba(180,130,80,0.08) 0%,transparent 55%),
+               radial-gradient(ellipse at 70% 80%,rgba(100,80,140,0.06) 0%,transparent 50%),
+               radial-gradient(ellipse at 50% 50%,rgba(20,30,60,0.25) 0%,transparent 70%);
+    animation:bgShift 30s ease-in-out infinite alternate}
+  @keyframes bgShift{0%{transform:translate(0,0) scale(1)}100%{transform:translate(30px,-20px) scale(1.05)}}
+
+  .container{position:relative;z-index:1;width:100%;max-width:420px;padding:12px 16px;margin-top:4px}
+
+  /* ===== GLASS PANEL ===== */
+  .glass{
+    background:linear-gradient(145deg,var(--glass-light),var(--glass-deep));
+    backdrop-filter:blur(32px) saturate(1.3);-webkit-backdrop-filter:blur(32px) saturate(1.3);
+    border:1px solid var(--glass-border);
+    border-radius:var(--r);
+    box-shadow:
+      0 12px 40px var(--shadow1),
+      0 2px 8px var(--shadow2),
+      inset 0 1px 0 rgba(255,255,255,0.08),
+      inset 0 -1px 0 rgba(0,0,0,0.15);
+    position:relative;
+  }
+  .glass::before{
+    content:'';position:absolute;inset:1px;border-radius:calc(var(--r) - 1px);
+    background:linear-gradient(180deg,rgba(255,255,255,0.03) 0%,transparent 40%);
+    pointer-events:none;
+  }
+
+  /* ===== HERO PANEL (image + title + timer + buttons) ===== */
+  .hero-panel{
+    margin-bottom:16px;overflow:hidden;position:relative;
+    border-radius:var(--r);
+    box-shadow:
+      0 16px 48px var(--shadow1),
+      0 2px 8px var(--shadow2),
+      inset 0 1px 0 rgba(255,255,255,0.10),
+      inset 0 -1px 0 rgba(0,0,0,0.15);
+  }
+
+  /* Background images (up to 4, crossfade) */
+  .hero-bg-layer{
+    position:absolute;inset:0;
+    background-size:cover;background-position:center 30%;
+    border-radius:var(--r);
+    opacity:0;
+    transition:opacity 1.5s ease;
+  }
+  .hero-bg-layer.active{opacity:1}
+  /* Dark overlay for readability */
+  .hero-bg-layer::after{
+    content:'';position:absolute;inset:0;
+    background:linear-gradient(180deg,
+      rgba(11,18,32,0.20) 0%,
+      rgba(11,18,32,0.10) 30%,
+      rgba(11,18,32,0.25) 55%,
+      rgba(11,18,32,0.60) 100%);
+    border-radius:var(--r);
+  }
+
+  /* Image dots + management bar — between progress bar and buttons */
+  .bg-bar{
+    display:flex;gap:5px;align-items:center;justify-content:center;
+    margin-bottom:10px;min-height:18px;
+  }
+  .bg-bar:empty{display:none}
+  .bg-dot{
+    width:8px;height:8px;border-radius:50%;cursor:pointer;
+    background:rgba(255,255,255,0.30);transition:all 0.3s;
+    border:1px solid rgba(255,255,255,0.10);
+  }
+  .bg-dot.active{background:rgba(255,255,255,0.80);box-shadow:0 0 6px rgba(255,255,255,0.3)}
+  .bg-dot:hover{background:rgba(255,255,255,0.55);transform:scale(1.2)}
+  .bg-del-btn{
+    width:16px;height:16px;border-radius:50%;cursor:pointer;
+    background:rgba(255,100,100,0.30);color:rgba(255,255,255,0.70);
+    border:1px solid rgba(255,100,100,0.25);
+    font-size:0.5rem;display:flex;align-items:center;justify-content:center;
+    margin-left:4px;transition:all 0.3s;line-height:1;
+  }
+  .bg-del-btn:hover{background:rgba(255,80,80,0.50);color:#fff}
+
+  /* Fallback when no image */
+  .hero-fallback{
+    position:absolute;inset:0;
+    background:linear-gradient(160deg,
+      rgba(100,80,60,0.15) 0%,
+      rgba(180,130,80,0.08) 30%,
+      rgba(80,60,120,0.08) 60%,
+      rgba(40,60,80,0.15) 100%);
+    border-radius:var(--r);
+    pointer-events:none;
+  }
+
+  .hero-content{position:relative;z-index:2;padding:24px 24px 14px;display:flex;flex-direction:column;min-height:360px;justify-content:space-between}
+
+  /* ===== TITLE (brush calligraphy) ===== */
+  .hero-title{text-align:center}
+  .hero-title h1{
+    font-family:'Yuji Boku',serif;
+    font-size:3.2rem;font-weight:400;letter-spacing:0.12em;
+    color:rgba(218,195,150,0.88);
+    text-shadow:0 1px 6px rgba(0,0,0,0.4),0 0 20px rgba(0,0,0,0.12);
+    -webkit-text-stroke:0.3px rgba(0,0,0,0.08);
+    line-height:1.1;
+  }
+  .hero-title .sub{
+    font-family:'Noto Sans JP',sans-serif;
+    font-size:0.7rem;font-weight:500;letter-spacing:0.25em;
+    color:rgba(255,255,255,0.88);margin-top:5px;
+    text-shadow:0 0 8px rgba(0,0,0,0.6),0 1px 3px rgba(0,0,0,0.5),0 0 20px rgba(0,0,0,0.25);
+  }
+
+  /* BG image load button */
+  .bg-load-btn{
+    position:absolute;top:12px;right:14px;z-index:3;
+    width:30px;height:30px;border-radius:50%;border:1px solid rgba(255,255,255,0.12);
+    background:rgba(0,0,0,0.25);color:var(--text-mid);
+    cursor:pointer;font-size:0.72rem;display:flex;align-items:center;justify-content:center;
+    backdrop-filter:blur(12px);transition:all 0.3s;
+    box-shadow:0 2px 10px rgba(0,0,0,0.3);
+  }
+  .bg-load-btn:hover{background:rgba(0,0,0,0.4);color:var(--text);border-color:rgba(255,255,255,0.2);transform:scale(1.05)}
+
+  /* ===== TIMER (horizontal bar style) ===== */
+  .timer-section{text-align:center}
+
+  .timer-time{
+    font-family:'Cormorant Garamond',serif;font-size:3.8rem;font-weight:300;
+    letter-spacing:8px;color:rgba(245,240,232,0.90);
+    text-shadow:
+      0 0 30px rgba(255,255,255,0.15),
+      0 0 60px rgba(212,165,116,0.08),
+      0 3px 8px rgba(0,0,0,0.45);
+    margin-bottom:0;
+  }
+  .timer-label{
+    color:rgba(255,255,255,0.85);font-size:0.62rem;font-weight:500;
+    letter-spacing:0.22em;margin-bottom:14px;
+    text-shadow:0 0 8px rgba(0,0,0,0.6),0 1px 3px rgba(0,0,0,0.5),0 0 20px rgba(0,0,0,0.25);
+    font-family:'Noto Sans JP',sans-serif;
+  }
+
+  /* Progress bar */
+  .progress-bar-wrap{
+    width:100%;height:4px;border-radius:2px;
+    background:rgba(255,255,255,0.08);
+    margin-bottom:22px;position:relative;
+    box-shadow:inset 0 1px 2px rgba(0,0,0,0.3);
+    overflow:hidden;
+  }
+  .progress-bar{
+    height:100%;border-radius:2px;
+    background:linear-gradient(90deg,rgba(190,170,120,0.7),rgba(218,195,150,0.8),rgba(190,170,120,0.6));
+    transition:width 1s linear;
+    box-shadow:0 0 8px rgba(218,195,150,0.20),0 0 16px rgba(218,195,150,0.06);
+    width:100%;
+  }
+
+  /* ===== GLASS BUTTONS ===== */
+  .controls{display:flex;justify-content:center;gap:8px;flex-wrap:nowrap}
+  .g-btn{
+    font-family:inherit;cursor:pointer;
+    border:1px solid rgba(255,255,255,0.14);border-radius:50px;
+    backdrop-filter:blur(16px);-webkit-backdrop-filter:blur(16px);
+    transition:all 0.3s cubic-bezier(0.4,0,0.2,1);
+    box-shadow:
+      0 4px 16px rgba(0,0,0,0.30),
+      0 1px 4px rgba(0,0,0,0.20),
+      inset 0 1px 0 rgba(255,255,255,0.10),
+      inset 0 -1px 0 rgba(0,0,0,0.08);
+    position:relative;overflow:hidden;
+    white-space:nowrap;
+    background:rgba(0,0,0,0.20);
+  }
+  .g-btn::before{
+    content:'';position:absolute;top:0;left:0;right:0;height:50%;
+    background:linear-gradient(180deg,rgba(255,255,255,0.08),transparent);
+    border-radius:50px 50px 0 0;pointer-events:none;
+  }
+  .g-btn:hover{transform:translateY(-2px);box-shadow:0 8px 28px rgba(0,0,0,0.40),0 2px 6px rgba(0,0,0,0.24),inset 0 1px 0 rgba(255,255,255,0.14)}
+  .g-btn:active{transform:translateY(1px) scale(0.97);box-shadow:0 2px 8px rgba(0,0,0,0.30);transition:0.1s}
+
+  .btn-main{
+    padding:11px 28px;font-size:0.82rem;font-weight:500;letter-spacing:0.12em;
+    background:rgba(212,165,116,0.18);
+    border-color:rgba(212,165,116,0.28);color:var(--accent2);
+    box-shadow:0 4px 20px rgba(212,165,116,0.12),0 2px 6px rgba(0,0,0,0.24),inset 0 1px 0 rgba(255,255,255,0.10),inset 0 -1px 0 rgba(0,0,0,0.06);
+  }
+  .btn-main:hover{box-shadow:0 8px 32px rgba(212,165,116,0.20),0 2px 8px rgba(0,0,0,0.26),inset 0 1px 0 rgba(255,255,255,0.14);border-color:rgba(212,165,116,0.40)}
+  .btn-sub{
+    padding:10px 16px;font-size:0.72rem;font-weight:400;letter-spacing:0.06em;
+    color:rgba(240,235,229,0.60);
+  }
+  .btn-sub:hover{color:var(--text);background:rgba(255,255,255,0.08)}
+
+  /* ===== COLLAPSIBLE SECTION ===== */
+  .section-toggle{
+    width:100%;padding:16px 20px;border:none;background:transparent;
+    color:rgba(255,255,255,0.80);font-family:inherit;font-size:0.76rem;font-weight:500;
+    cursor:pointer;display:flex;align-items:center;justify-content:center;gap:8px;
+    letter-spacing:0.18em;transition:color 0.3s;
+    text-shadow:0 1px 3px rgba(0,0,0,0.2);
+  }
+  .section-toggle:hover{color:rgba(255,255,255,0.95)}
+  .section-toggle .arr{display:inline-block;transition:transform 0.35s ease;font-size:0.6rem}
+  .section-toggle.open .arr{transform:rotate(180deg)}
+  .section-body{max-height:0;overflow:hidden;transition:max-height 0.5s cubic-bezier(0.4,0,0.2,1)}
+  .section-body.open{max-height:800px}
+  .section-inner{padding:4px 20px 22px}
+
+  /* ===== BGM CARDS ===== */
+  .track-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:6px;margin-bottom:14px}
+  .track-card{
+    padding:10px 4px;border-radius:var(--r-sm);text-align:center;cursor:pointer;
+    transition:all 0.3s ease;border:1px solid transparent;
+    background:linear-gradient(145deg,rgba(255,255,255,0.04),rgba(255,255,255,0.01));
+    position:relative;overflow:hidden;
+    box-shadow:inset 0 1px 0 rgba(255,255,255,0.04);
+  }
+  .track-card::before{
+    content:'';position:absolute;top:0;left:0;right:0;height:40%;
+    background:linear-gradient(180deg,rgba(255,255,255,0.03),transparent);pointer-events:none;
+  }
+  .track-card:hover:not(.disabled){background:var(--glass);border-color:var(--glass-border)}
+  .track-card.active:not(.disabled){
+    background:linear-gradient(145deg,rgba(212,165,116,0.12),rgba(212,137,106,0.06));
+    border-color:rgba(212,165,116,0.25);
+    box-shadow:0 2px 12px rgba(212,165,116,0.08),inset 0 1px 0 rgba(255,255,255,0.06);
+  }
+  .track-card.disabled{opacity:0.2;cursor:not-allowed;pointer-events:none}
+  .track-card .t-num{font-size:0.6rem;color:var(--text-dim);margin-bottom:3px;font-weight:400}
+  .track-card .t-name{font-size:0.68rem;font-weight:400;letter-spacing:0.03em}
+  .track-card.off-card{opacity:0.5}
+  .track-card.off-card.active{opacity:1}
+  .track-del{
+    position:absolute;top:2px;right:3px;width:14px;height:14px;border-radius:50%;
+    background:rgba(255,100,100,0.25);color:rgba(255,255,255,0.6);border:none;
+    font-size:0.45rem;cursor:pointer;display:none;align-items:center;justify-content:center;
+    line-height:1;padding:0;transition:all 0.3s;font-family:inherit;
+  }
+  .track-card:hover .track-del.visible{display:flex}
+  .track-del:hover{background:rgba(255,80,80,0.50);color:#fff}
+
+  /* ===== CONTROLS IN BGM ===== */
+  .bgm-row{display:flex;align-items:center;gap:8px;margin-bottom:12px}
+  .bgm-label{font-size:0.66rem;color:var(--text-mid);min-width:52px;font-weight:400;letter-spacing:0.05em}
+  .pill{
+    padding:6px 14px;border-radius:20px;font-size:0.64rem;font-weight:400;cursor:pointer;
+    font-family:inherit;border:1px solid rgba(255,255,255,0.06);letter-spacing:0.04em;
+    background:linear-gradient(145deg,rgba(255,255,255,0.06),rgba(255,255,255,0.02));
+    color:var(--text-dim);transition:all 0.3s;
+    box-shadow:0 2px 8px rgba(0,0,0,0.12),inset 0 1px 0 rgba(255,255,255,0.05);
+  }
+  .pill:hover{background:var(--glass);color:var(--text-mid);border-color:rgba(255,255,255,0.10)}
+  .pill.active{
+    background:linear-gradient(145deg,rgba(212,165,116,0.18),rgba(212,165,116,0.08));
+    border-color:rgba(212,165,116,0.30);color:var(--accent);
+    box-shadow:0 2px 12px rgba(212,165,116,0.10),inset 0 1px 0 rgba(255,255,255,0.06);
+  }
+
+  /* switch */
+  .switch-row{display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;
+    padding:10px 14px;border-radius:var(--r-sm);
+    background:linear-gradient(145deg,rgba(255,255,255,0.03),rgba(255,255,255,0.01));
+    border:1px solid rgba(255,255,255,0.05);
+  }
+  .switch-row .sw-label{font-size:0.72rem;color:var(--text-mid);font-weight:400}
+  .switch{
+    width:44px;height:24px;border-radius:12px;cursor:pointer;position:relative;
+    background:rgba(255,255,255,0.08);border:1px solid rgba(255,255,255,0.10);
+    transition:all 0.3s;box-shadow:inset 0 1px 3px rgba(0,0,0,0.2);
+  }
+  .switch.on{background:linear-gradient(135deg,rgba(212,165,116,0.35),rgba(212,137,106,0.20));border-color:rgba(212,165,116,0.3)}
+  .switch::after{
+    content:'';position:absolute;top:2px;left:2px;width:18px;height:18px;border-radius:50%;
+    background:linear-gradient(145deg,#f0e0d0,#c8b8a0);
+    box-shadow:0 2px 6px rgba(0,0,0,0.3),inset 0 1px 0 rgba(255,255,255,0.5);
+    transition:transform 0.3s cubic-bezier(0.4,0,0.2,1);
+  }
+  .switch.on::after{transform:translateX(20px)}
+
+  /* volume */
+  .vol-slider{
+    flex:1;-webkit-appearance:none;appearance:none;height:3px;border-radius:2px;
+    background:rgba(255,255,255,0.06);outline:none;
+  }
+  .vol-slider::-webkit-slider-thumb{
+    -webkit-appearance:none;width:14px;height:14px;border-radius:50%;
+    background:linear-gradient(145deg,#e8c4a0,#c4a080);cursor:pointer;
+    box-shadow:0 2px 8px var(--accent-glow),inset 0 1px 0 rgba(255,255,255,0.4);
+  }
+
+  /* drop zone */
+  .drop-zone{
+    border:1.5px dashed rgba(255,255,255,0.08);border-radius:var(--r-sm);
+    padding:14px;text-align:center;cursor:pointer;transition:all 0.3s;margin-bottom:10px;
+  }
+  .drop-zone:hover{border-color:rgba(212,165,116,0.25);background:rgba(212,165,116,0.02)}
+  .drop-zone .dz-text{font-size:0.7rem;color:var(--text-mid);font-weight:400}
+  .drop-zone .dz-sub{font-size:0.58rem;color:var(--text-dim);margin-top:4px;opacity:0.6;font-weight:400}
+
+  .clear-btn{
+    padding:5px 12px;border-radius:20px;font-size:0.58rem;font-weight:400;
+    border:1px solid rgba(212,137,106,0.20);background:rgba(212,137,106,0.06);
+    color:var(--pink);cursor:pointer;font-family:inherit;transition:all 0.3s;
+    box-shadow:0 2px 8px rgba(0,0,0,0.10);
+  }
+  .clear-btn:hover{background:rgba(212,137,106,0.12)}
+
+  /* visualizer */
+  .viz{display:flex;justify-content:center;align-items:flex-end;gap:2px;height:20px;margin-top:6px}
+  .viz .vb{width:2.5px;border-radius:2px;transition:height 0.15s;opacity:0.4;background:var(--accent)}
+
+  /* ===== STATS ===== */
+  .stats-panel{padding:18px 20px;margin-bottom:16px}
+  .stats-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;text-align:center}
+  .sv{font-family:'Noto Sans JP',sans-serif;font-size:1.1rem;font-weight:500;color:rgba(255,255,255,0.88);text-shadow:0 0 8px rgba(0,0,0,0.3)}
+  .sl{font-size:0.6rem;color:rgba(255,255,255,0.55);margin-top:4px;letter-spacing:0.08em;font-weight:500;text-shadow:0 1px 3px rgba(0,0,0,0.2)}
+
+  /* ===== SETTINGS ===== */
+  .setting-row{display:flex;align-items:center;justify-content:space-between;margin-bottom:10px}
+  .setting-row label{font-size:0.72rem;color:var(--text-mid);font-weight:400}
+  .setting-row input[type="number"]{
+    width:60px;padding:5px 8px;border-radius:10px;
+    border:1px solid var(--glass-border);
+    background:linear-gradient(145deg,rgba(255,255,255,0.04),rgba(255,255,255,0.01));
+    color:var(--text);font-family:'JetBrains Mono',monospace;font-size:0.78rem;text-align:center;
+    box-shadow:inset 0 1px 3px rgba(0,0,0,0.2);
+  }
+
+  @media(max-width:400px){
+    .hero-content{padding:20px 16px 12px;min-height:310px}
+    .hero-title h1{font-size:2.6rem}
+    .timer-time{font-size:3rem;letter-spacing:6px}
+    .btn-main{padding:10px 22px;font-size:0.76rem}
+    .btn-sub{padding:8px 12px;font-size:0.66rem}
+  }
+</style>
+</head>
+<body>
+
+<div class="bg"></div>
+
+<div class="container">
+
+  <!-- HERO: Image + Title + Timer + Buttons all-in-one -->
+  <div class="hero-panel glass" id="heroPanel">
+    <div class="hero-bg-layer" id="bgLayer0"></div>
+    <div class="hero-bg-layer" id="bgLayer1"></div>
+    <div class="hero-bg-layer" id="bgLayer2"></div>
+    <div class="hero-bg-layer" id="bgLayer3"></div>
+    <div class="hero-fallback"></div>
+    <button class="bg-load-btn" onclick="document.getElementById('bgImageInput').click()" title="背景画像を追加" style="right:14px">🖼</button>
+    <input type="file" id="bgImageInput" accept="image/*" multiple style="display:none" onchange="loadBgImages(event)">
+
+    <div class="hero-content">
+      <!-- Title -->
+      <div class="hero-title">
+        <h1>音凪</h1>
+        <div class="sub">by ポモドーロ</div>
+      </div>
+
+      <!-- Timer -->
+      <div class="timer-section">
+        <div class="timer-time" id="timerDisplay">25:00</div>
+        <div class="timer-label" id="timerLabel">スタート</div>
+        <div class="progress-bar-wrap">
+          <div class="progress-bar" id="progressBar"></div>
+        </div>
+        <div class="bg-bar" id="bgBar"></div>
+        <div class="controls">
+          <button class="g-btn btn-sub" onclick="resetTimer()">リセット</button>
+          <button class="g-btn btn-main" id="startBtn" onclick="toggleTimer()">スタート</button>
+          <button class="g-btn btn-sub" onclick="skipSession()">スキップ</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- BGM Section (collapsed) -->
+  <div class="glass" style="margin-bottom:16px">
+    <button class="section-toggle" id="bgmToggle" onclick="toggleSection('bgm')">
+      BGM <span class="arr">▾</span>
+    </button>
+    <div class="section-body" id="bgmBody">
+      <div class="section-inner">
+
+        <!-- 内蔵音源スイッチ -->
+        <div class="switch-row">
+          <span class="sw-label">内蔵音源を使用</span>
+          <div class="switch" id="builtinSwitch" onclick="toggleBuiltin()"></div>
+        </div>
+
+        <!-- 再生順 -->
+        <div class="bgm-row" id="playModeArea">
+          <span class="bgm-label">再生順</span>
+          <button class="pill active" id="modeSelect" onclick="setPlayMode('select')">選択</button>
+          <button class="pill" id="modeSequential" onclick="setPlayMode('sequential')">順次</button>
+          <button class="pill" id="modeRandom" onclick="setPlayMode('random')">ランダム</button>
+        </div>
+
+        <!-- Track Cards -->
+        <div class="track-grid" id="trackGrid">
+          <div class="track-card active" data-track="0" onclick="selectTrack(0)">
+            <div class="t-num">1</div><div class="t-name" id="tn0">---</div>
+          </div>
+          <div class="track-card" data-track="1" onclick="selectTrack(1)">
+            <div class="t-num">2</div><div class="t-name" id="tn1">---</div>
+          </div>
+          <div class="track-card" data-track="2" onclick="selectTrack(2)">
+            <div class="t-num">3</div><div class="t-name" id="tn2">---</div>
+          </div>
+          <div class="track-card" data-track="3" onclick="selectTrack(3)">
+            <div class="t-num">4</div><div class="t-name" id="tn3">---</div>
+          </div>
+          <div class="track-card" data-track="4" onclick="selectTrack(4)">
+            <div class="t-num">5</div><div class="t-name" id="tn4">---</div>
+          </div>
+          <div class="track-card" data-track="5" onclick="selectTrack(5)">
+            <div class="t-num">6</div><div class="t-name" id="tn5">---</div>
+          </div>
+          <div class="track-card" data-track="6" onclick="selectTrack(6)">
+            <div class="t-num">7</div><div class="t-name" id="tn6">---</div>
+          </div>
+          <div class="track-card off-card" data-track="-1" onclick="selectTrack(-1)">
+            <div class="t-num">&nbsp;</div><div class="t-name">OFF</div>
+          </div>
+        </div>
+
+        <!-- Volume -->
+        <div class="bgm-row">
+          <span class="bgm-label">音量</span>
+          <input type="range" class="vol-slider" id="volumeSlider" min="0" max="100" value="40" oninput="setVolume(this.value)">
+        </div>
+
+        <!-- Now Playing -->
+        <div id="nowPlaying" style="text-align:center;margin-bottom:10px;min-height:18px;font-size:0.65rem;color:var(--accent2);opacity:0.85;letter-spacing:0.04em"></div>
+
+        <!-- MP3 Drop --><div class="drop-zone" id="mp3LoadArea"
+          ondragover="event.preventDefault();this.style.borderColor='var(--accent)'"
+          ondragleave="this.style.borderColor='rgba(255,255,255,0.08)'"
+          ondrop="handleDrop(event)" onclick="document.getElementById('mp3FileInput').click()">
+          <div class="dz-text">📂 タップしてMP3を読み込む</div>
+          <div class="dz-sub">自動保存・次回起動時も復元</div>
+          <input type="file" id="mp3FileInput" accept="audio/*" multiple style="display:none" onchange="handleFileSelect(event)">
+          <div id="loadedFilesInfo" style="margin-top:8px;font-size:0.55rem;color:var(--green)"></div>
+        </div>
+
+        <div id="clearArea" style="display:none;text-align:right">
+          <button class="clear-btn" onclick="clearAllTracks()">全曲クリア</button>
+        </div>
+
+        <div class="viz" id="visualizer"></div>
+
+      </div>
+    </div>
+  </div>
+
+  <!-- Stats -->
+  <div class="stats-panel glass">
+    <div class="stats-grid">
+      <div><div class="sv" id="completedSessions">０</div><div class="sl">完了</div></div>
+      <div><div class="sv" id="totalMinutes">０</div><div class="sl">合計(分)</div></div>
+      <div><div class="sv" id="currentStreak">０</div><div class="sl">連続</div></div>
+    </div>
+  </div>
+
+  <!-- Settings (collapsed) -->
+  <div class="glass" style="margin-bottom:20px">
+    <button class="section-toggle" id="settingsToggle" onclick="toggleSection('settings')">
+      設定 <span class="arr">▾</span>
+    </button>
+    <div class="section-body" id="settingsBody">
+      <div class="section-inner">
+        <div class="setting-row"><label>作業（分）</label><input type="number" id="workDuration" value="25" min="1" max="90" onchange="updateDurations()"></div>
+        <div class="setting-row"><label>小休憩（分）</label><input type="number" id="shortBreakDuration" value="5" min="1" max="30" onchange="updateDurations()"></div>
+        <div class="setting-row"><label>大休憩（分）</label><input type="number" id="longBreakDuration" value="15" min="1" max="60" onchange="updateDurations()"></div>
+        <div class="setting-row"><label>大休憩間隔</label><input type="number" id="longBreakInterval" value="4" min="2" max="10"></div>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<script>
+// ===== STATE =====
+let audioCtx=null,masterGain=null,currentNodes=[],isPlaying=false,timerInterval=null;
+let currentMode='work',timeRemaining=25*60,totalTime=25*60;
+let selectedTrack=0,volume=0.4,completedSessions=0,totalMinutes=0,streak=0,isTimerRunning=false;
+let useBuiltin=false,playMode='select',currentTrackIndex=0;
+const MAX_TRACKS=7,STORAGE_KEY='otonagi_';
+
+// ===== BG IMAGES (up to 3, crossfade on track change) =====
+const MAX_BG=4;
+let bgImages=[]; // array of data URIs
+let activeBgIndex=0;
+
+function loadBgImages(e){
+  const files=Array.from(e.target.files);
+  let pending=files.length;
+  files.forEach(file=>{
+    if(bgImages.length>=MAX_BG){pending--;return;}
+    const img=new Image();
+    const reader=new FileReader();
+    reader.onload=ev=>{
+      img.onload=()=>{
+        const canvas=document.createElement('canvas');
+        const maxW=800,maxH=600;
+        let w=img.width,h=img.height;
+        if(w>maxW){h*=maxW/w;w=maxW;}
+        if(h>maxH){w*=maxH/h;h=maxH;}
+        canvas.width=w;canvas.height=h;
+        const ctx=canvas.getContext('2d');
+        ctx.drawImage(img,0,0,w,h);
+        const data=canvas.toDataURL('image/jpeg',0.75);
+        bgImages.push(data);
+        saveBgImages();
+        applyBgLayers();
+        pending--;
+      };
+      img.src=ev.target.result;
+    };
+    reader.readAsDataURL(file);
+  });
+}
+async function saveBgImages(){
+  try{
+    // Clear all bg slots then save current ones
+    await idbClear('bgImages');
+    for(let i=0;i<bgImages.length;i++){
+      await idbPut('bgImages',{id:i,data:bgImages[i]});
+    }
+  }catch(e){
+    alert('画像の保存容量が不足しています。');
+  }
+}
+async function loadBgFromStorage(){
+  bgImages=[];
+  try{
+    const all=await idbGetAll('bgImages');
+    // Sort by id to maintain order
+    all.sort((a,b)=>a.id-b.id);
+    all.forEach(item=>bgImages.push(item.data));
+  }catch(e){console.error('BG load error:',e);}
+  if(bgImages.length)applyBgLayers();
+}
+function applyBgLayers(){
+  for(let i=0;i<MAX_BG;i++){
+    const el=document.getElementById('bgLayer'+i);
+    if(i<bgImages.length){
+      el.style.backgroundImage='url('+bgImages[i]+')';
+      el.classList.toggle('active',i===activeBgIndex);
+    }else{
+      el.style.backgroundImage='';
+      el.classList.remove('active');
+    }
+  }
+  renderBgDots();
+}
+function renderBgDots(){
+  const wrap=document.getElementById('bgBar');
+  wrap.innerHTML='';
+  if(bgImages.length===0)return;
+  for(let i=0;i<bgImages.length;i++){
+    const d=document.createElement('div');
+    d.className='bg-dot'+(i===activeBgIndex?' active':'');
+    d.onclick=()=>{activeBgIndex=i;applyBgLayers();};
+    wrap.appendChild(d);
+  }
+  // Delete button for current image
+  const del=document.createElement('div');
+  del.className='bg-del-btn';
+  del.textContent='✕';
+  del.title='表示中の画像を削除';
+  del.onclick=()=>{removeBgImage(activeBgIndex);};
+  wrap.appendChild(del);
+}
+function removeBgImage(idx){
+  bgImages.splice(idx,1);
+  if(activeBgIndex>=bgImages.length)activeBgIndex=Math.max(0,bgImages.length-1);
+  saveBgImages();
+  // Clear all layers first
+  for(let i=0;i<MAX_BG;i++){
+    const el=document.getElementById('bgLayer'+i);
+    el.style.backgroundImage='';el.classList.remove('active');
+  }
+  applyBgLayers();
+}
+function cycleBg(){
+  if(bgImages.length<=1)return;
+  activeBgIndex=(activeBgIndex+1)%bgImages.length;
+  applyBgLayers();
+}
+function randomBg(){
+  if(bgImages.length<=1)return;
+  let next;
+  do{next=Math.floor(Math.random()*bgImages.length);}while(next===activeBgIndex&&bgImages.length>1);
+  activeBgIndex=next;
+  applyBgLayers();
+}
+
+// ===== TRACKS (slot-based) =====
+const tracks=[];
+for(let i=0;i<MAX_TRACKS;i++) tracks.push(null);
+const BUILTIN_NAMES=['Lo-Fi','Rain','Ambient','Cafe','Forest','---','---'];
+
+// ===== MP3 PLAYER =====
+const mp3Player=new Audio();
+mp3Player.volume=volume;
+mp3Player.addEventListener('ended',()=>{
+  if(!isPlaying)return;
+  if(playMode==='select'){mp3Player.currentTime=0;mp3Player.play();}
+  else{
+    const next=getNextTrack();
+    if(next!==null&&tracks[next]){
+      selectedTrack=next;highlightTrack();updateNowPlaying();
+      mp3Player.src=tracks[next].data;mp3Player.play();
+      cycleBg(); // next bg with next track
+    }
+  }
+});
+
+// ===== IndexedDB STORAGE =====
+const DB_NAME='otonagi_db';
+const DB_VERSION=1;
+let db=null;
+
+function openDB(){
+  return new Promise((resolve,reject)=>{
+    const req=indexedDB.open(DB_NAME,DB_VERSION);
+    req.onupgradeneeded=e=>{
+      const d=e.target.result;
+      if(!d.objectStoreNames.contains('tracks'))d.createObjectStore('tracks',{keyPath:'id'});
+      if(!d.objectStoreNames.contains('bgImages'))d.createObjectStore('bgImages',{keyPath:'id'});
+    };
+    req.onsuccess=e=>{db=e.target.result;resolve(db);};
+    req.onerror=e=>reject(e.target.error);
+  });
+}
+
+function idbPut(store,data){
+  return new Promise((resolve,reject)=>{
+    const tx=db.transaction(store,'readwrite');
+    tx.objectStore(store).put(data);
+    tx.oncomplete=()=>resolve();
+    tx.onerror=e=>reject(e.target.error);
+  });
+}
+function idbGet(store,key){
+  return new Promise((resolve,reject)=>{
+    const tx=db.transaction(store,'readonly');
+    const req=tx.objectStore(store).get(key);
+    req.onsuccess=()=>resolve(req.result||null);
+    req.onerror=e=>reject(e.target.error);
+  });
+}
+function idbDelete(store,key){
+  return new Promise((resolve,reject)=>{
+    const tx=db.transaction(store,'readwrite');
+    tx.objectStore(store).delete(key);
+    tx.oncomplete=()=>resolve();
+    tx.onerror=e=>reject(e.target.error);
+  });
+}
+function idbGetAll(store){
+  return new Promise((resolve,reject)=>{
+    const tx=db.transaction(store,'readonly');
+    const req=tx.objectStore(store).getAll();
+    req.onsuccess=()=>resolve(req.result||[]);
+    req.onerror=e=>reject(e.target.error);
+  });
+}
+function idbClear(store){
+  return new Promise((resolve,reject)=>{
+    const tx=db.transaction(store,'readwrite');
+    tx.objectStore(store).clear();
+    tx.oncomplete=()=>resolve();
+    tx.onerror=e=>reject(e.target.error);
+  });
+}
+
+// Migrate old localStorage data to IndexedDB (one-time)
+async function migrateFromLocalStorage(){
+  let migrated=false;
+  // Migrate tracks
+  for(let i=0;i<MAX_TRACKS;i++){
+    try{
+      const name=localStorage.getItem(STORAGE_KEY+'n'+i);
+      const data=localStorage.getItem(STORAGE_KEY+'d'+i);
+      if(name&&data){
+        await idbPut('tracks',{id:i,name,data});
+        localStorage.removeItem(STORAGE_KEY+'n'+i);
+        localStorage.removeItem(STORAGE_KEY+'d'+i);
+        migrated=true;
+      }
+    }catch(e){}
+  }
+  // Migrate bg images
+  try{localStorage.removeItem(STORAGE_KEY+'bg');}catch(e){}
+  for(let i=0;i<MAX_BG;i++){
+    try{
+      const d=localStorage.getItem(STORAGE_KEY+'bg'+i);
+      if(d){
+        await idbPut('bgImages',{id:i,data:d});
+        localStorage.removeItem(STORAGE_KEY+'bg'+i);
+        migrated=true;
+      }
+    }catch(e){}
+  }
+  return migrated;
+}
+
+async function loadFromStorage(){
+  try{
+    const all=await idbGetAll('tracks');
+    all.forEach(t=>{if(t.id>=0&&t.id<MAX_TRACKS)tracks[t.id]={name:t.name,data:t.data};});
+  }catch(e){console.error('Track load error:',e);}
+  refreshTrackUI();
+}
+async function saveTrack(i,name,data){
+  try{
+    await idbPut('tracks',{id:i,name,data});
+  }catch(e){alert('ストレージ容量が不足しています。不要な曲を削除してください。');}
+}
+async function removeTrack(i){
+  try{await idbDelete('tracks',i);}catch(e){}
+  tracks[i]=null;refreshTrackUI();
+}
+async function clearAllTracks(){
+  try{await idbClear('tracks');}catch(e){}
+  for(let i=0;i<MAX_TRACKS;i++)tracks[i]=null;
+  refreshTrackUI();
+}
+
+// ===== FILE LOADING =====
+function handleDrop(e){e.preventDefault();e.currentTarget.style.borderColor='rgba(255,255,255,0.08)';loadMp3Files(Array.from(e.dataTransfer.files).filter(f=>f.type.startsWith('audio/')));}
+function handleFileSelect(e){loadMp3Files(Array.from(e.target.files));}
+// Storage safety limit (50MB in base64 characters ≈ 37MB actual audio)
+const STORAGE_LIMIT_KB=50*1024;
+function getUsedKB(){let kb=0;for(let i=0;i<MAX_TRACKS;i++){if(tracks[i]&&tracks[i].data)kb+=tracks[i].data.length/1024;}return kb;}
+
+function loadMp3Files(files){
+  let slot=0;
+  files.forEach(file=>{
+    while(slot<MAX_TRACKS&&tracks[slot])slot++;
+    if(slot>=MAX_TRACKS){alert('スロットが満杯です。不要な曲を削除してから追加してください。');return;}
+    const idx=slot;slot++;
+    const reader=new FileReader();
+    reader.onload=ev=>{
+      const name=file.name.replace(/\.[^.]+$/,'');
+      // Duplicate check
+      const dup=tracks.find(t=>t&&t.name===name);
+      if(dup){alert(`「${name}」は既に登録されています。`);return;}
+      const data=ev.target.result;
+      const newKB=data.length/1024;
+      if(getUsedKB()+newKB>STORAGE_LIMIT_KB){
+        alert(`容量上限（${(STORAGE_LIMIT_KB/1024).toFixed(0)}MB）に達します。\n１曲削除してから追加してください。\n現在: ${(getUsedKB()/1024).toFixed(1)}MB`);
+        return;
+      }
+      tracks[idx]={name,data};saveTrack(idx,name,data);refreshTrackUI();
+    };
+    reader.readAsDataURL(file);
+  });
+}
+function refreshTrackUI(){
+  let count=0;
+  for(let i=0;i<MAX_TRACKS;i++){
+    const el=document.getElementById('tn'+i);
+    const card=document.querySelector(`[data-track="${i}"]`);
+    // Remove old delete button if any
+    const oldDel=card.querySelector('.track-del');
+    if(oldDel)oldDel.remove();
+    if(tracks[i]){
+      let n=tracks[i].name;if(n.length>8)n=n.substring(0,7)+'…';
+      el.textContent=n;card.classList.remove('disabled');count++;
+      // Add individual delete button
+      const del=document.createElement('button');
+      del.className='track-del visible';del.textContent='✕';del.title='この曲を削除';
+      del.onclick=ev=>{ev.stopPropagation();removeTrack(i);};
+      card.appendChild(del);
+    }else{
+      el.textContent=useBuiltin&&i<5?BUILTIN_NAMES[i]:'---';
+      if(useBuiltin&&i<5)card.classList.remove('disabled');else card.classList.add('disabled');
+    }
+  }
+  const info=document.getElementById('loadedFilesInfo');
+  if(count>0){
+    const usedMB=getUsedKB()/1024;
+    const limitMB=STORAGE_LIMIT_KB/1024;
+    const pct=Math.round(usedMB/limitMB*100);
+    const warn=pct>=80?' ⚠':'';
+    info.innerHTML=`${count}/${MAX_TRACKS} 保存済み <span style="opacity:0.5">${usedMB.toFixed(1)}/${limitMB.toFixed(0)}MB (${pct}%)${warn}</span>`;
+  }
+  else info.innerHTML='';
+  document.getElementById('clearArea').style.display=count>0?'block':'none';
+  highlightTrack();
+}
+function highlightTrack(){document.querySelectorAll('.track-card').forEach(c=>c.classList.remove('active'));const sel=document.querySelector(`[data-track="${selectedTrack}"]`);if(sel)sel.classList.add('active');updateNowPlaying();}
+function updateNowPlaying(){
+  const np=document.getElementById('nowPlaying');
+  if(!np)return;
+  if(isPlaying&&selectedTrack>=0&&tracks[selectedTrack]){
+    np.innerHTML='♪ '+tracks[selectedTrack].name;
+  }else if(isPlaying&&useBuiltin&&selectedTrack>=0&&selectedTrack<5){
+    np.innerHTML='♪ '+BUILTIN_NAMES[selectedTrack];
+  }else{np.innerHTML='';}
+}
+
+// ===== AUDIO ENGINE =====
+function initAudio(){if(!audioCtx){audioCtx=new(window.AudioContext||window.webkitAudioContext)();masterGain=audioCtx.createGain();masterGain.gain.value=volume;masterGain.connect(audioCtx.destination);}if(audioCtx.state==='suspended')audioCtx.resume();}
+function stopAllNodes(){currentNodes.forEach(n=>{try{n.stop();}catch(e){}try{n.disconnect();}catch(e){}});currentNodes=[];}
+
+function playLofi(){const bpm=72,bl=60/bpm,ch=[[261.6,329.6,392.0,493.9],[220.0,277.2,329.6,415.3],[293.7,349.2,440.0,523.3],[196.0,246.9,293.7,370.0]];function bar(st,ci){ch[ci%4].forEach(f=>{const o=audioCtx.createOscillator(),g=audioCtx.createGain(),fl=audioCtx.createBiquadFilter();o.type='triangle';o.frequency.value=f*0.5;fl.type='lowpass';fl.frequency.value=800;g.gain.setValueAtTime(0,st);g.gain.linearRampToValueAtTime(0.06,st+0.1);g.gain.linearRampToValueAtTime(0,st+bl*4);o.connect(fl);fl.connect(g);g.connect(masterGain);o.start(st);o.stop(st+bl*4+0.1);currentNodes.push(o);});for(let b=0;b<4;b++){if(b%2===0){const o=audioCtx.createOscillator(),g=audioCtx.createGain(),t=st+b*bl;o.type='sine';o.frequency.setValueAtTime(150,t);o.frequency.exponentialRampToValueAtTime(40,t+0.15);g.gain.setValueAtTime(0.15,t);g.gain.exponentialRampToValueAtTime(0.001,t+0.3);o.connect(g);g.connect(masterGain);o.start(t);o.stop(t+0.35);currentNodes.push(o);}mkNoise(st+b*bl,0.05,0.04);}const pn=[523.3,587.3,659.3,784.0,880.0],mt=st+(Math.random()*2)*bl,nt=pn[0|Math.random()*5],mo=audioCtx.createOscillator(),mg=audioCtx.createGain(),mf=audioCtx.createBiquadFilter();mo.type='sine';mo.frequency.value=nt*0.5;mf.type='lowpass';mf.frequency.value=1200;mg.gain.setValueAtTime(0,mt);mg.gain.linearRampToValueAtTime(0.07,mt+0.05);mg.gain.exponentialRampToValueAtTime(0.001,mt+bl*1.5);mo.connect(mf);mf.connect(mg);mg.connect(masterGain);mo.start(mt);mo.stop(mt+bl*2);currentNodes.push(mo);}let bi=0;function lp(){if(!isPlaying)return;const n=audioCtx.currentTime;for(let i=0;i<8;i++)bar(n+i*bl*4,bi+i);bi+=8;setTimeout(lp,bl*4*7*1000);}lp();}
+function playRain(){const bs=audioCtx.sampleRate*4,bf=audioCtx.createBuffer(2,bs,audioCtx.sampleRate);for(let c=0;c<2;c++){const d=bf.getChannelData(c);for(let i=0;i<bs;i++)d[i]=(Math.random()*2-1)*0.5;}const s=audioCtx.createBufferSource();s.buffer=bf;s.loop=true;const lp=audioCtx.createBiquadFilter();lp.type='lowpass';lp.frequency.value=1500;const hp=audioCtx.createBiquadFilter();hp.type='highpass';hp.frequency.value=200;const g=audioCtx.createGain();g.gain.value=0.25;s.connect(lp);lp.connect(hp);hp.connect(g);g.connect(masterGain);s.start();currentNodes.push(s);function th(){if(!isPlaying)return;const o=audioCtx.createOscillator(),g2=audioCtx.createGain();o.type='sawtooth';o.frequency.value=40+Math.random()*30;const f=audioCtx.createBiquadFilter();f.type='lowpass';f.frequency.value=150;g2.gain.setValueAtTime(0,audioCtx.currentTime);g2.gain.linearRampToValueAtTime(0.08,audioCtx.currentTime+0.5);g2.gain.exponentialRampToValueAtTime(0.001,audioCtx.currentTime+3);o.connect(f);f.connect(g2);g2.connect(masterGain);o.start();o.stop(audioCtx.currentTime+3.5);currentNodes.push(o);setTimeout(th,15e3+Math.random()*3e4);}setTimeout(th,8e3);function dr(){if(!isPlaying)return;const o=audioCtx.createOscillator(),g2=audioCtx.createGain(),fr=2e3+Math.random()*3e3;o.type='sine';o.frequency.setValueAtTime(fr,audioCtx.currentTime);o.frequency.exponentialRampToValueAtTime(fr*0.5,audioCtx.currentTime+0.1);g2.gain.setValueAtTime(0.03,audioCtx.currentTime);g2.gain.exponentialRampToValueAtTime(0.001,audioCtx.currentTime+0.15);o.connect(g2);g2.connect(masterGain);o.start();o.stop(audioCtx.currentTime+0.2);currentNodes.push(o);setTimeout(dr,200+Math.random()*800);}dr();}
+function playAmbient(){const ns=[130.8,164.8,196.0,246.9,261.6,329.6,392.0];function pd(){if(!isPlaying)return;const f=ns[0|Math.random()*ns.length],o1=audioCtx.createOscillator(),o2=audioCtx.createOscillator(),g=audioCtx.createGain(),fl=audioCtx.createBiquadFilter();o1.type='sine';o1.frequency.value=f;o2.type='triangle';o2.frequency.value=f*1.002;fl.type='lowpass';fl.frequency.value=600;const n=audioCtx.currentTime;g.gain.setValueAtTime(0,n);g.gain.linearRampToValueAtTime(0.06,n+3);g.gain.linearRampToValueAtTime(0,n+10);o1.connect(fl);o2.connect(fl);fl.connect(g);g.connect(masterGain);o1.start(n);o2.start(n);o1.stop(n+10.5);o2.stop(n+10.5);currentNodes.push(o1,o2);setTimeout(pd,3e3+Math.random()*5e3);}pd();function sh(){if(!isPlaying)return;const f=ns[0|Math.random()*ns.length]*4,o=audioCtx.createOscillator(),g=audioCtx.createGain();o.type='sine';o.frequency.value=f;g.gain.setValueAtTime(0,audioCtx.currentTime);g.gain.linearRampToValueAtTime(0.02,audioCtx.currentTime+0.5);g.gain.exponentialRampToValueAtTime(0.001,audioCtx.currentTime+4);o.connect(g);g.connect(masterGain);o.start();o.stop(audioCtx.currentTime+4.5);currentNodes.push(o);setTimeout(sh,2e3+Math.random()*4e3);}sh();}
+function playCafe(){const bs=audioCtx.sampleRate*3,bf=audioCtx.createBuffer(2,bs,audioCtx.sampleRate);for(let c=0;c<2;c++){const d=bf.getChannelData(c);for(let i=0;i<bs;i++)d[i]=Math.random()*2-1;}const s=audioCtx.createBufferSource();s.buffer=bf;s.loop=true;const bp=audioCtx.createBiquadFilter();bp.type='bandpass';bp.frequency.value=800;bp.Q.value=0.5;const g=audioCtx.createGain();g.gain.value=0.06;s.connect(bp);bp.connect(g);g.connect(masterGain);s.start();currentNodes.push(s);function cl(){if(!isPlaying)return;const o=audioCtx.createOscillator(),g2=audioCtx.createGain();o.type='sine';o.frequency.value=3e3+Math.random()*2e3;g2.gain.setValueAtTime(0.04,audioCtx.currentTime);g2.gain.exponentialRampToValueAtTime(0.001,audioCtx.currentTime+0.08);o.connect(g2);g2.connect(masterGain);o.start();o.stop(audioCtx.currentTime+0.1);currentNodes.push(o);setTimeout(cl,3e3+Math.random()*8e3);}setTimeout(cl,2e3);const pns=[261.6,293.7,329.6,349.2,392.0,440.0,493.9,523.3];function pn(){if(!isPlaying)return;const f=pns[0|Math.random()*8],o=audioCtx.createOscillator(),g2=audioCtx.createGain(),fl=audioCtx.createBiquadFilter();o.type='triangle';o.frequency.value=f;fl.type='lowpass';fl.frequency.value=2e3;g2.gain.setValueAtTime(0.05,audioCtx.currentTime);g2.gain.exponentialRampToValueAtTime(0.001,audioCtx.currentTime+2);o.connect(fl);fl.connect(g2);g2.connect(masterGain);o.start();o.stop(audioCtx.currentTime+2.5);currentNodes.push(o);setTimeout(pn,1500+Math.random()*3e3);}pn();}
+function playForest(){const bs=audioCtx.sampleRate*4,bf=audioCtx.createBuffer(1,bs,audioCtx.sampleRate);const d=bf.getChannelData(0);for(let i=0;i<bs;i++)d[i]=Math.random()*2-1;const w=audioCtx.createBufferSource();w.buffer=bf;w.loop=true;const wf=audioCtx.createBiquadFilter();wf.type='lowpass';wf.frequency.value=400;const wg=audioCtx.createGain();wg.gain.value=0.08;w.connect(wf);wf.connect(wg);wg.connect(masterGain);w.start();currentNodes.push(w);const lfo=audioCtx.createOscillator(),lg=audioCtx.createGain();lfo.type='sine';lfo.frequency.value=0.1;lg.gain.value=200;lfo.connect(lg);lg.connect(wf.frequency);lfo.start();currentNodes.push(lfo);function bd(){if(!isPlaying)return;const bf2=2e3+Math.random()*2e3,o=audioCtx.createOscillator(),g=audioCtx.createGain();o.type='sine';const n=audioCtx.currentTime,tl=0.08+Math.random()*0.1,tw=2+Math.floor(Math.random()*4);for(let t=0;t<tw;t++){const st=n+t*(tl+0.05);o.frequency.setValueAtTime(bf2,st);o.frequency.linearRampToValueAtTime(bf2*(1+Math.random()*0.3),st+tl*0.5);g.gain.setValueAtTime(0.03,st);g.gain.linearRampToValueAtTime(0,st+tl);}o.connect(g);g.connect(masterGain);o.start(n);o.stop(n+tw*(tl+0.05)+0.5);currentNodes.push(o);setTimeout(bd,2e3+Math.random()*6e3);}bd();function tr(){if(!isPlaying)return;const o=audioCtx.createOscillator(),g=audioCtx.createGain(),f=audioCtx.createBiquadFilter();o.type='sine';o.frequency.value=400+Math.random()*800;f.type='bandpass';f.frequency.value=600;f.Q.value=2;g.gain.setValueAtTime(0.01,audioCtx.currentTime);g.gain.exponentialRampToValueAtTime(0.001,audioCtx.currentTime+0.3);o.connect(f);f.connect(g);g.connect(masterGain);o.start();o.stop(audioCtx.currentTime+0.35);currentNodes.push(o);setTimeout(tr,100+Math.random()*300);}tr();}
+function mkNoise(t,dur,vol){const bs=audioCtx.sampleRate*dur,bf=audioCtx.createBuffer(1,bs,audioCtx.sampleRate);const d=bf.getChannelData(0);for(let i=0;i<bs;i++)d[i]=Math.random()*2-1;const s=audioCtx.createBufferSource();s.buffer=bf;const hp=audioCtx.createBiquadFilter();hp.type='highpass';hp.frequency.value=7e3;const g=audioCtx.createGain();g.gain.setValueAtTime(vol,t);g.gain.exponentialRampToValueAtTime(0.001,t+dur);s.connect(hp);hp.connect(g);g.connect(masterGain);s.start(t);s.stop(t+dur+0.01);currentNodes.push(s);}
+
+const BUILTIN_FNS=[playLofi,playRain,playAmbient,playCafe,playForest];
+
+// ===== MUSIC CONTROL =====
+function startMusic(){
+  if(selectedTrack===-1)return;
+  isPlaying=true;updateNowPlaying();
+  let idx=selectedTrack;
+  if(playMode!=='select'){const n=getNextTrack();if(n!==null)idx=n;}
+  if(!useBuiltin&&tracks[idx]){selectedTrack=idx;highlightTrack();mp3Player.src=tracks[idx].data;mp3Player.volume=volume;mp3Player.loop=false;mp3Player.play().catch(()=>playBuiltinFallback(idx));}
+  else if(useBuiltin&&idx<5){playBuiltinFallback(idx);}
+  else if(tracks[idx]){selectedTrack=idx;highlightTrack();mp3Player.src=tracks[idx].data;mp3Player.volume=volume;mp3Player.loop=false;mp3Player.play().catch(()=>{});}
+  randomBg(); // switch background with music
+  updateViz();
+}
+function playBuiltinFallback(idx){if(!audioCtx)initAudio();stopAllNodes();if(idx<5)BUILTIN_FNS[idx]();}
+function stopMusic(){isPlaying=false;mp3Player.pause();mp3Player.currentTime=0;stopAllNodes();updateNowPlaying();}
+
+// ===== VISUALIZER =====
+function initViz(){const v=document.getElementById('visualizer');v.innerHTML='';for(let i=0;i<18;i++){const b=document.createElement('div');b.className='vb';b.style.height='2px';v.appendChild(b);}}
+function updateViz(){if(!isPlaying){document.querySelectorAll('.vb').forEach(b=>b.style.height='2px');return;}document.querySelectorAll('.vb').forEach(b=>{b.style.height=(2+Math.random()*16)+'px';});requestAnimationFrame(updateViz);}
+
+// ===== TIMER =====
+function switchMode(mode){
+  currentMode=mode;
+  const d={work:+document.getElementById('workDuration').value,short:+document.getElementById('shortBreakDuration').value,long:+document.getElementById('longBreakDuration').value};
+  totalTime=d[mode]*60;timeRemaining=totalTime;updateTimerDisplay();updateProgress();
+  if(isTimerRunning){clearInterval(timerInterval);isTimerRunning=false;stopMusic();
+    document.getElementById('startBtn').textContent='スタート';document.getElementById('timerLabel').textContent='スタート';}
+}
+function toggleTimer(){if(isTimerRunning)pauseTimer();else startTimer();}
+function startTimer(){
+  initAudio();isTimerRunning=true;
+  document.getElementById('startBtn').textContent='一時停止';
+  document.getElementById('timerLabel').textContent=currentMode==='work'?'集中':'ブレイク';
+  startMusic();
+  timerInterval=setInterval(()=>{timeRemaining--;if(timeRemaining<=0){completeSession();return;}updateTimerDisplay();updateProgress();},1000);
+}
+function pauseTimer(){isTimerRunning=false;clearInterval(timerInterval);document.getElementById('startBtn').textContent='再開';document.getElementById('timerLabel').textContent='一時停止';stopMusic();}
+function resetTimer(){clearInterval(timerInterval);isTimerRunning=false;stopMusic();const d={work:+document.getElementById('workDuration').value,short:+document.getElementById('shortBreakDuration').value,long:+document.getElementById('longBreakDuration').value};totalTime=d[currentMode]*60;timeRemaining=totalTime;updateTimerDisplay();updateProgress();document.getElementById('startBtn').textContent='スタート';document.getElementById('timerLabel').textContent='スタート';}
+function skipSession(){completeSession();}
+function completeSession(){
+  clearInterval(timerInterval);isTimerRunning=false;stopMusic();playNotif();
+  cycleBg(); // switch scene on session change
+  if(currentMode==='work'){completedSessions++;totalMinutes+=+document.getElementById('workDuration').value;streak++;updateStats();
+    const iv=+document.getElementById('longBreakInterval').value;switchMode(completedSessions%iv===0?'long':'short');
+  }else switchMode('work');
+  document.getElementById('timerLabel').textContent='完了';
+}
+function playNotif(){
+  if(!audioCtx)initAudio();const t=audioCtx.currentTime;
+  const ng=audioCtx.createGain();ng.gain.value=0.6;ng.connect(audioCtx.destination);
+  [{f:880,t:0,d:0.8},{f:880,t:1,d:0.8},{f:880,t:2,d:0.8},{f:1760,t:3,d:2}].forEach(c=>{
+    const o=audioCtx.createOscillator(),g=audioCtx.createGain();o.type='sine';o.frequency.value=c.f;
+    g.gain.setValueAtTime(0,t+c.t);g.gain.linearRampToValueAtTime(0.5,t+c.t+0.02);g.gain.exponentialRampToValueAtTime(0.001,t+c.t+c.d);
+    o.connect(g);g.connect(ng);o.start(t+c.t);o.stop(t+c.t+c.d+0.1);
+    const o2=audioCtx.createOscillator(),g2=audioCtx.createGain();o2.type='sine';o2.frequency.value=c.f*2;
+    g2.gain.setValueAtTime(0,t+c.t);g2.gain.linearRampToValueAtTime(0.1,t+c.t+0.02);g2.gain.exponentialRampToValueAtTime(0.001,t+c.t+c.d*0.6);
+    o2.connect(g2);g2.connect(ng);o2.start(t+c.t);o2.stop(t+c.t+c.d+0.1);
+  });
+}
+
+function updateTimerDisplay(){const m=Math.floor(timeRemaining/60),s=timeRemaining%60;document.getElementById('timerDisplay').textContent=`${String(m).padStart(2,'0')}:${String(s).padStart(2,'0')}`;document.title=`${String(m).padStart(2,'0')}:${String(s).padStart(2,'0')} — 音凪`;}
+function updateProgress(){document.getElementById('progressBar').style.width=(timeRemaining/totalTime*100)+'%';}
+function toZen(n){return String(n).replace(/[0-9]/g,c=>String.fromCharCode(c.charCodeAt(0)+0xFEE0));}
+function updateStats(){document.getElementById('completedSessions').textContent=toZen(completedSessions);document.getElementById('totalMinutes').textContent=toZen(totalMinutes);document.getElementById('currentStreak').textContent=toZen(streak);}
+function updateDurations(){if(!isTimerRunning)switchMode(currentMode);}
+
+// ===== TRACK SELECTION =====
+function selectTrack(i){selectedTrack=i;highlightTrack();if(isTimerRunning&&isPlaying){stopMusic();if(i!==-1)startMusic();}}
+function setVolume(v){volume=v/100;if(masterGain)masterGain.gain.value=volume;mp3Player.volume=volume;}
+
+// ===== TOGGLES =====
+function toggleBuiltin(){useBuiltin=!useBuiltin;document.getElementById('builtinSwitch').classList.toggle('on',useBuiltin);refreshTrackUI();if(isTimerRunning&&isPlaying){stopMusic();startMusic();}}
+function setPlayMode(m){playMode=m;document.querySelectorAll('.pill').forEach(p=>p.classList.remove('active'));document.getElementById('mode'+m.charAt(0).toUpperCase()+m.slice(1)).classList.add('active');}
+function getNextTrack(){
+  const avail=[];for(let i=0;i<MAX_TRACKS;i++){if(tracks[i]||(useBuiltin&&i<5))avail.push(i);}
+  if(!avail.length)return null;
+  if(playMode==='sequential'){currentTrackIndex=(currentTrackIndex+1)%avail.length;return avail[currentTrackIndex];}
+  if(playMode==='random')return avail[0|Math.random()*avail.length];
+  return selectedTrack;
+}
+function toggleSection(id){
+  const body=document.getElementById(id+'Body'),btn=document.getElementById(id+'Toggle')||document.getElementById(id==='bgm'?'bgmToggle':'settingsToggle');
+  body.classList.toggle('open');btn.classList.toggle('open');
+}
+
+// ===== INIT =====
+initViz();updateProgress();
+(async()=>{
+  await openDB();
+  await migrateFromLocalStorage();
+  await loadFromStorage();
+  await loadBgFromStorage();
+})();
+
+// Register Service Worker for offline/PWA
+if('serviceWorker' in navigator){navigator.serviceWorker.register('sw.js').catch(()=>{});}
+</script>
+</body>
+</html>
