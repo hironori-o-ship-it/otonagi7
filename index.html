@@ -549,7 +549,7 @@
           <div class="dz-text">📂 タップしてMP3を読み込む</div>
           <div class="dz-sub">自動保存・次回起動時も復元</div>
           <div class="dz-sub" style="margin-top:2px;opacity:0.5;">iPhone/iPad: ファイル → Google Drive からも選択可</div>
-          <input type="file" id="mp3FileInput" accept="*/*" multiple style="display:none" onchange="handleFileSelect(event)">
+          <input type="file" id="mp3FileInput" accept="audio/*,video/*,.mp3,.m4a,.aac,.wav,.ogg,.flac" multiple style="display:none" onchange="handleFileSelect(event)">
           <div id="loadedFilesInfo" style="margin-top:8px;font-size:0.55rem;color:var(--green)"></div>
         </label>
 
