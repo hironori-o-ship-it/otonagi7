@@ -234,21 +234,24 @@
   .g-btn:active{transform:translateY(1px) scale(0.97);box-shadow:0 2px 8px rgba(0,0,0,0.30);transition:0.1s}
 
   .btn-main{
-    padding:11px 28px;font-size:0.82rem;font-weight:500;letter-spacing:0.12em;
+    padding:11px 0;font-size:0.78rem;font-weight:500;letter-spacing:0.12em;
+    width:120px;
     background:rgba(212,165,116,0.18);
     border-color:rgba(212,165,116,0.28);color:var(--accent2);
     box-shadow:0 4px 20px rgba(212,165,116,0.12),0 2px 6px rgba(0,0,0,0.24),inset 0 1px 0 rgba(255,255,255,0.10),inset 0 -1px 0 rgba(0,0,0,0.06);
   }
   .btn-main:hover{box-shadow:0 8px 32px rgba(212,165,116,0.20),0 2px 8px rgba(0,0,0,0.26),inset 0 1px 0 rgba(255,255,255,0.14);border-color:rgba(212,165,116,0.40)}
   .btn-sub{
-    padding:10px 16px;font-size:0.72rem;font-weight:400;letter-spacing:0.06em;
+    padding:11px 0;font-size:0.78rem;font-weight:400;letter-spacing:0.06em;
+    width:120px;
     color:rgba(240,235,229,0.60);
   }
   .btn-sub:hover{color:var(--text);background:rgba(255,255,255,0.08)}
   .btn-stop{
-    padding:8px 14px;font-size:0.66rem;font-weight:400;letter-spacing:0.06em;
+    padding:11px 0;font-size:0.78rem;font-weight:400;letter-spacing:0.06em;
+    width:120px;
     background:rgba(180,60,60,0.12);color:rgba(255,140,140,0.70);
-    border-color:rgba(180,60,60,0.20);margin-top:8px;width:100%;
+    border-color:rgba(180,60,60,0.20);
   }
   .btn-stop:hover{background:rgba(180,60,60,0.25);color:rgba(255,160,160,1);}
 
@@ -391,8 +394,9 @@
     .hero-content{padding:20px 16px 12px;min-height:310px}
     .hero-title h1{font-size:2.6rem}
     .timer-time{font-size:3rem;letter-spacing:6px}
-    .btn-main{padding:10px 22px;font-size:0.76rem}
-    .btn-sub{padding:8px 12px;font-size:0.66rem}
+    .btn-main{padding:10px 0;font-size:0.72rem;width:108px}
+    .btn-sub{padding:10px 0;font-size:0.72rem;width:108px}
+    .btn-stop{padding:10px 0;font-size:0.72rem;width:108px}
   }
 </style>
 </head>
@@ -442,8 +446,8 @@
         <div id="timerOffArea" style="display:none;padding:18px 0 8px;text-align:center;">
           <div style="font-size:0.7rem;color:var(--text-dim);letter-spacing:0.18em;">BGM モード</div>
         </div>
-        <div style="text-align:center;margin-top:10px;">
-          <button class="g-btn btn-sub" id="timerOffBtn" onclick="toggleTimerOff()" style="font-size:0.62rem;padding:6px 16px;opacity:0.6;">タイマー OFF</button>
+        <div style="text-align:center;margin-top:14px;padding-bottom:18px;">
+          <button class="g-btn btn-sub" id="timerOffBtn" onclick="toggleTimerOff()" style="font-size:0.62rem;padding:6px 20px;opacity:0.6;width:auto;">タイマー OFF</button>
         </div>
       </div>
     </div>
