@@ -438,12 +438,6 @@
     <div class="section-body" id="bgmBody">
       <div class="section-inner">
 
-        <!-- 内蔵音源スイッチ -->
-        <div class="switch-row">
-          <span class="sw-label">内蔵音源を使用</span>
-          <div class="switch" id="builtinSwitch" onclick="toggleBuiltin()"></div>
-        </div>
-
         <!-- 再生順 -->
         <div class="bgm-row" id="playModeArea">
           <span class="bgm-label">再生順</span>
@@ -474,6 +468,15 @@
           </div>
           <div class="track-card" data-track="6" onclick="selectTrack(6)">
             <div class="t-num">7</div><div class="t-name" id="tn6">---</div>
+          </div>
+          <div class="track-card" data-track="7" onclick="selectTrack(7)">
+            <div class="t-num">8</div><div class="t-name" id="tn7">---</div>
+          </div>
+          <div class="track-card" data-track="8" onclick="selectTrack(8)">
+            <div class="t-num">9</div><div class="t-name" id="tn8">---</div>
+          </div>
+          <div class="track-card" data-track="9" onclick="selectTrack(9)">
+            <div class="t-num">10</div><div class="t-name" id="tn9">---</div>
           </div>
           <div class="track-card off-card" data-track="-1" onclick="selectTrack(-1)">
             <div class="t-num">&nbsp;</div><div class="t-name">OFF</div>
@@ -540,8 +543,8 @@
 let audioCtx=null,masterGain=null,currentNodes=[],isPlaying=false,timerInterval=null;
 let currentMode='work',timeRemaining=25*60,totalTime=25*60;
 let selectedTrack=0,volume=0.4,completedSessions=0,totalMinutes=0,streak=0,isTimerRunning=false;
-let useBuiltin=false,playMode='select',currentTrackIndex=0;
-const MAX_TRACKS=7,STORAGE_KEY='otonagi_';
+let playMode='select',currentTrackIndex=0;
+const MAX_TRACKS=10,STORAGE_KEY='otonagi_';
 
 // ===== BG IMAGES (up to 3, crossfade on track change) =====
 const MAX_BG=4;
@@ -655,7 +658,6 @@ function randomBg(){
 // ===== TRACKS (slot-based) =====
 const tracks=[];
 for(let i=0;i<MAX_TRACKS;i++) tracks.push(null);
-const BUILTIN_NAMES=['Lo-Fi','Rain','Ambient','Cafe','Forest','---','---'];
 
 // ===== MP3 PLAYER =====
 const mp3Player=new Audio();
@@ -789,7 +791,7 @@ async function clearAllTracks(){
 function handleDrop(e){e.preventDefault();e.currentTarget.style.borderColor='rgba(255,255,255,0.08)';loadMp3Files(Array.from(e.dataTransfer.files).filter(f=>f.type.startsWith('audio/')));}
 function handleFileSelect(e){loadMp3Files(Array.from(e.target.files));}
 // Storage safety limit (50MB in base64 characters ≈ 37MB actual audio)
-const STORAGE_LIMIT_KB=50*1024;
+const STORAGE_LIMIT_KB=80*1024;
 function getUsedKB(){let kb=0;for(let i=0;i<MAX_TRACKS;i++){if(tracks[i]&&tracks[i].data)kb+=tracks[i].data.length/1024;}return kb;}
 
 function loadMp3Files(files){
@@ -832,8 +834,8 @@ function refreshTrackUI(){
       del.onclick=ev=>{ev.stopPropagation();removeTrack(i);};
       card.appendChild(del);
     }else{
-      el.textContent=useBuiltin&&i<5?BUILTIN_NAMES[i]:'---';
-      if(useBuiltin&&i<5)card.classList.remove('disabled');else card.classList.add('disabled');
+      el.textContent='---';
+      card.classList.add('disabled');
     }
   }
   const info=document.getElementById('loadedFilesInfo');
@@ -854,8 +856,6 @@ function updateNowPlaying(){
   if(!np)return;
   if(isPlaying&&selectedTrack>=0&&tracks[selectedTrack]){
     np.innerHTML='♪ '+tracks[selectedTrack].name;
-  }else if(isPlaying&&useBuiltin&&selectedTrack>=0&&selectedTrack<5){
-    np.innerHTML='♪ '+BUILTIN_NAMES[selectedTrack];
   }else{np.innerHTML='';}
 }
 
@@ -863,29 +863,18 @@ function updateNowPlaying(){
 function initAudio(){if(!audioCtx){audioCtx=new(window.AudioContext||window.webkitAudioContext)();masterGain=audioCtx.createGain();masterGain.gain.value=volume;masterGain.connect(audioCtx.destination);}if(audioCtx.state==='suspended')audioCtx.resume();}
 function stopAllNodes(){currentNodes.forEach(n=>{try{n.stop();}catch(e){}try{n.disconnect();}catch(e){}});currentNodes=[];}
 
-function playLofi(){const bpm=72,bl=60/bpm,ch=[[261.6,329.6,392.0,493.9],[220.0,277.2,329.6,415.3],[293.7,349.2,440.0,523.3],[196.0,246.9,293.7,370.0]];function bar(st,ci){ch[ci%4].forEach(f=>{const o=audioCtx.createOscillator(),g=audioCtx.createGain(),fl=audioCtx.createBiquadFilter();o.type='triangle';o.frequency.value=f*0.5;fl.type='lowpass';fl.frequency.value=800;g.gain.setValueAtTime(0,st);g.gain.linearRampToValueAtTime(0.06,st+0.1);g.gain.linearRampToValueAtTime(0,st+bl*4);o.connect(fl);fl.connect(g);g.connect(masterGain);o.start(st);o.stop(st+bl*4+0.1);currentNodes.push(o);});for(let b=0;b<4;b++){if(b%2===0){const o=audioCtx.createOscillator(),g=audioCtx.createGain(),t=st+b*bl;o.type='sine';o.frequency.setValueAtTime(150,t);o.frequency.exponentialRampToValueAtTime(40,t+0.15);g.gain.setValueAtTime(0.15,t);g.gain.exponentialRampToValueAtTime(0.001,t+0.3);o.connect(g);g.connect(masterGain);o.start(t);o.stop(t+0.35);currentNodes.push(o);}mkNoise(st+b*bl,0.05,0.04);}const pn=[523.3,587.3,659.3,784.0,880.0],mt=st+(Math.random()*2)*bl,nt=pn[0|Math.random()*5],mo=audioCtx.createOscillator(),mg=audioCtx.createGain(),mf=audioCtx.createBiquadFilter();mo.type='sine';mo.frequency.value=nt*0.5;mf.type='lowpass';mf.frequency.value=1200;mg.gain.setValueAtTime(0,mt);mg.gain.linearRampToValueAtTime(0.07,mt+0.05);mg.gain.exponentialRampToValueAtTime(0.001,mt+bl*1.5);mo.connect(mf);mf.connect(mg);mg.connect(masterGain);mo.start(mt);mo.stop(mt+bl*2);currentNodes.push(mo);}let bi=0;function lp(){if(!isPlaying)return;const n=audioCtx.currentTime;for(let i=0;i<8;i++)bar(n+i*bl*4,bi+i);bi+=8;setTimeout(lp,bl*4*7*1000);}lp();}
-function playRain(){const bs=audioCtx.sampleRate*4,bf=audioCtx.createBuffer(2,bs,audioCtx.sampleRate);for(let c=0;c<2;c++){const d=bf.getChannelData(c);for(let i=0;i<bs;i++)d[i]=(Math.random()*2-1)*0.5;}const s=audioCtx.createBufferSource();s.buffer=bf;s.loop=true;const lp=audioCtx.createBiquadFilter();lp.type='lowpass';lp.frequency.value=1500;const hp=audioCtx.createBiquadFilter();hp.type='highpass';hp.frequency.value=200;const g=audioCtx.createGain();g.gain.value=0.25;s.connect(lp);lp.connect(hp);hp.connect(g);g.connect(masterGain);s.start();currentNodes.push(s);function th(){if(!isPlaying)return;const o=audioCtx.createOscillator(),g2=audioCtx.createGain();o.type='sawtooth';o.frequency.value=40+Math.random()*30;const f=audioCtx.createBiquadFilter();f.type='lowpass';f.frequency.value=150;g2.gain.setValueAtTime(0,audioCtx.currentTime);g2.gain.linearRampToValueAtTime(0.08,audioCtx.currentTime+0.5);g2.gain.exponentialRampToValueAtTime(0.001,audioCtx.currentTime+3);o.connect(f);f.connect(g2);g2.connect(masterGain);o.start();o.stop(audioCtx.currentTime+3.5);currentNodes.push(o);setTimeout(th,15e3+Math.random()*3e4);}setTimeout(th,8e3);function dr(){if(!isPlaying)return;const o=audioCtx.createOscillator(),g2=audioCtx.createGain(),fr=2e3+Math.random()*3e3;o.type='sine';o.frequency.setValueAtTime(fr,audioCtx.currentTime);o.frequency.exponentialRampToValueAtTime(fr*0.5,audioCtx.currentTime+0.1);g2.gain.setValueAtTime(0.03,audioCtx.currentTime);g2.gain.exponentialRampToValueAtTime(0.001,audioCtx.currentTime+0.15);o.connect(g2);g2.connect(masterGain);o.start();o.stop(audioCtx.currentTime+0.2);currentNodes.push(o);setTimeout(dr,200+Math.random()*800);}dr();}
-function playAmbient(){const ns=[130.8,164.8,196.0,246.9,261.6,329.6,392.0];function pd(){if(!isPlaying)return;const f=ns[0|Math.random()*ns.length],o1=audioCtx.createOscillator(),o2=audioCtx.createOscillator(),g=audioCtx.createGain(),fl=audioCtx.createBiquadFilter();o1.type='sine';o1.frequency.value=f;o2.type='triangle';o2.frequency.value=f*1.002;fl.type='lowpass';fl.frequency.value=600;const n=audioCtx.currentTime;g.gain.setValueAtTime(0,n);g.gain.linearRampToValueAtTime(0.06,n+3);g.gain.linearRampToValueAtTime(0,n+10);o1.connect(fl);o2.connect(fl);fl.connect(g);g.connect(masterGain);o1.start(n);o2.start(n);o1.stop(n+10.5);o2.stop(n+10.5);currentNodes.push(o1,o2);setTimeout(pd,3e3+Math.random()*5e3);}pd();function sh(){if(!isPlaying)return;const f=ns[0|Math.random()*ns.length]*4,o=audioCtx.createOscillator(),g=audioCtx.createGain();o.type='sine';o.frequency.value=f;g.gain.setValueAtTime(0,audioCtx.currentTime);g.gain.linearRampToValueAtTime(0.02,audioCtx.currentTime+0.5);g.gain.exponentialRampToValueAtTime(0.001,audioCtx.currentTime+4);o.connect(g);g.connect(masterGain);o.start();o.stop(audioCtx.currentTime+4.5);currentNodes.push(o);setTimeout(sh,2e3+Math.random()*4e3);}sh();}
-function playCafe(){const bs=audioCtx.sampleRate*3,bf=audioCtx.createBuffer(2,bs,audioCtx.sampleRate);for(let c=0;c<2;c++){const d=bf.getChannelData(c);for(let i=0;i<bs;i++)d[i]=Math.random()*2-1;}const s=audioCtx.createBufferSource();s.buffer=bf;s.loop=true;const bp=audioCtx.createBiquadFilter();bp.type='bandpass';bp.frequency.value=800;bp.Q.value=0.5;const g=audioCtx.createGain();g.gain.value=0.06;s.connect(bp);bp.connect(g);g.connect(masterGain);s.start();currentNodes.push(s);function cl(){if(!isPlaying)return;const o=audioCtx.createOscillator(),g2=audioCtx.createGain();o.type='sine';o.frequency.value=3e3+Math.random()*2e3;g2.gain.setValueAtTime(0.04,audioCtx.currentTime);g2.gain.exponentialRampToValueAtTime(0.001,audioCtx.currentTime+0.08);o.connect(g2);g2.connect(masterGain);o.start();o.stop(audioCtx.currentTime+0.1);currentNodes.push(o);setTimeout(cl,3e3+Math.random()*8e3);}setTimeout(cl,2e3);const pns=[261.6,293.7,329.6,349.2,392.0,440.0,493.9,523.3];function pn(){if(!isPlaying)return;const f=pns[0|Math.random()*8],o=audioCtx.createOscillator(),g2=audioCtx.createGain(),fl=audioCtx.createBiquadFilter();o.type='triangle';o.frequency.value=f;fl.type='lowpass';fl.frequency.value=2e3;g2.gain.setValueAtTime(0.05,audioCtx.currentTime);g2.gain.exponentialRampToValueAtTime(0.001,audioCtx.currentTime+2);o.connect(fl);fl.connect(g2);g2.connect(masterGain);o.start();o.stop(audioCtx.currentTime+2.5);currentNodes.push(o);setTimeout(pn,1500+Math.random()*3e3);}pn();}
-function playForest(){const bs=audioCtx.sampleRate*4,bf=audioCtx.createBuffer(1,bs,audioCtx.sampleRate);const d=bf.getChannelData(0);for(let i=0;i<bs;i++)d[i]=Math.random()*2-1;const w=audioCtx.createBufferSource();w.buffer=bf;w.loop=true;const wf=audioCtx.createBiquadFilter();wf.type='lowpass';wf.frequency.value=400;const wg=audioCtx.createGain();wg.gain.value=0.08;w.connect(wf);wf.connect(wg);wg.connect(masterGain);w.start();currentNodes.push(w);const lfo=audioCtx.createOscillator(),lg=audioCtx.createGain();lfo.type='sine';lfo.frequency.value=0.1;lg.gain.value=200;lfo.connect(lg);lg.connect(wf.frequency);lfo.start();currentNodes.push(lfo);function bd(){if(!isPlaying)return;const bf2=2e3+Math.random()*2e3,o=audioCtx.createOscillator(),g=audioCtx.createGain();o.type='sine';const n=audioCtx.currentTime,tl=0.08+Math.random()*0.1,tw=2+Math.floor(Math.random()*4);for(let t=0;t<tw;t++){const st=n+t*(tl+0.05);o.frequency.setValueAtTime(bf2,st);o.frequency.linearRampToValueAtTime(bf2*(1+Math.random()*0.3),st+tl*0.5);g.gain.setValueAtTime(0.03,st);g.gain.linearRampToValueAtTime(0,st+tl);}o.connect(g);g.connect(masterGain);o.start(n);o.stop(n+tw*(tl+0.05)+0.5);currentNodes.push(o);setTimeout(bd,2e3+Math.random()*6e3);}bd();function tr(){if(!isPlaying)return;const o=audioCtx.createOscillator(),g=audioCtx.createGain(),f=audioCtx.createBiquadFilter();o.type='sine';o.frequency.value=400+Math.random()*800;f.type='bandpass';f.frequency.value=600;f.Q.value=2;g.gain.setValueAtTime(0.01,audioCtx.currentTime);g.gain.exponentialRampToValueAtTime(0.001,audioCtx.currentTime+0.3);o.connect(f);f.connect(g);g.connect(masterGain);o.start();o.stop(audioCtx.currentTime+0.35);currentNodes.push(o);setTimeout(tr,100+Math.random()*300);}tr();}
-function mkNoise(t,dur,vol){const bs=audioCtx.sampleRate*dur,bf=audioCtx.createBuffer(1,bs,audioCtx.sampleRate);const d=bf.getChannelData(0);for(let i=0;i<bs;i++)d[i]=Math.random()*2-1;const s=audioCtx.createBufferSource();s.buffer=bf;const hp=audioCtx.createBiquadFilter();hp.type='highpass';hp.frequency.value=7e3;const g=audioCtx.createGain();g.gain.setValueAtTime(vol,t);g.gain.exponentialRampToValueAtTime(0.001,t+dur);s.connect(hp);hp.connect(g);g.connect(masterGain);s.start(t);s.stop(t+dur+0.01);currentNodes.push(s);}
 
-const BUILTIN_FNS=[playLofi,playRain,playAmbient,playCafe,playForest];
 
 // ===== MUSIC CONTROL =====
 function startMusic(){
   if(selectedTrack===-1)return;
-  isPlaying=true;updateNowPlaying();
   let idx=selectedTrack;
   if(playMode!=='select'){const n=getNextTrack();if(n!==null)idx=n;}
-  if(!useBuiltin&&tracks[idx]){selectedTrack=idx;highlightTrack();mp3Player.src=tracks[idx].data;mp3Player.volume=volume;mp3Player.loop=false;mp3Player.play().catch(()=>playBuiltinFallback(idx));}
-  else if(useBuiltin&&idx<5){playBuiltinFallback(idx);}
-  else if(tracks[idx]){selectedTrack=idx;highlightTrack();mp3Player.src=tracks[idx].data;mp3Player.volume=volume;mp3Player.loop=false;mp3Player.play().catch(()=>{});}
-  randomBg(); // switch background with music
-  updateViz();
+  if(tracks[idx]){isPlaying=true;selectedTrack=idx;highlightTrack();updateNowPlaying();mp3Player.src=tracks[idx].data;mp3Player.volume=volume;mp3Player.loop=false;mp3Player.play().catch(()=>{});}
+  else{isPlaying=false;updateNowPlaying();return;}
+  randomBg();updateViz();
 }
-function playBuiltinFallback(idx){if(!audioCtx)initAudio();stopAllNodes();if(idx<5)BUILTIN_FNS[idx]();}
-function stopMusic(){isPlaying=false;mp3Player.pause();mp3Player.currentTime=0;stopAllNodes();updateNowPlaying();}
+function stopMusic(){isPlaying=false;mp3Player.pause();mp3Player.currentTime=0;updateNowPlaying();}
 
 // ===== VISUALIZER =====
 function initViz(){const v=document.getElementById('visualizer');v.innerHTML='';for(let i=0;i<18;i++){const b=document.createElement('div');b.className='vb';b.style.height='2px';v.appendChild(b);}}
@@ -942,10 +931,9 @@ function selectTrack(i){selectedTrack=i;highlightTrack();if(isTimerRunning&&isPl
 function setVolume(v){volume=v/100;if(masterGain)masterGain.gain.value=volume;mp3Player.volume=volume;}
 
 // ===== TOGGLES =====
-function toggleBuiltin(){useBuiltin=!useBuiltin;document.getElementById('builtinSwitch').classList.toggle('on',useBuiltin);refreshTrackUI();if(isTimerRunning&&isPlaying){stopMusic();startMusic();}}
 function setPlayMode(m){playMode=m;document.querySelectorAll('.pill').forEach(p=>p.classList.remove('active'));document.getElementById('mode'+m.charAt(0).toUpperCase()+m.slice(1)).classList.add('active');}
 function getNextTrack(){
-  const avail=[];for(let i=0;i<MAX_TRACKS;i++){if(tracks[i]||(useBuiltin&&i<5))avail.push(i);}
+  const avail=[];for(let i=0;i<MAX_TRACKS;i++){if(tracks[i])avail.push(i);}
   if(!avail.length)return null;
   if(playMode==='sequential'){currentTrackIndex=(currentTrackIndex+1)%avail.length;return avail[currentTrackIndex];}
   if(playMode==='random')return avail[0|Math.random()*avail.length];
