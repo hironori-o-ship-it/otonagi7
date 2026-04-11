@@ -433,6 +433,9 @@ border:1px solid rgba(255,255,255,0.05);}
 <div class="progress-bar" id="progressBar"></div>
 </div>
 <div class="bg-bar" id="bgBar"></div>
+<!-- 常時表示：曲名＋ビジュアライザー -->
+<div id="heroNowPlaying" style="text-align:center;margin-bottom:8px;min-height:16px;font-size:0.65rem;color:rgba(218,195,150,0.85);letter-spacing:0.04em;text-shadow:0 1px 4px rgba(0,0,0,0.5);"></div>
+<div class="viz" id="heroVisualizer" style="margin-bottom:10px;"></div>
 <div class="controls" style="flex-direction:column;gap:8px;">
 <div style="display:flex;gap:8px;justify-content:center;">
 <button class="g-btn btn-sub" onclick="resetTimer()">リセット</button>
@@ -858,15 +861,16 @@ function highlightTrack(){
 }
 
 function updateNowPlaying(){
-  const np=document.getElementById('nowPlaying');
-  if(!np)return;
+  let name='';
   if(isDriveTrack&&isPlaying&&currentDriveTrack){
-    np.innerHTML='♪ '+currentDriveTrack.name;
+    name='♪ '+currentDriveTrack.name;
   }else if(!isDriveTrack&&isPlaying&&selectedTrack>=0&&tracks[selectedTrack]){
-    np.innerHTML='♪ '+tracks[selectedTrack].name;
-  }else{
-    np.innerHTML='';
+    name='♪ '+tracks[selectedTrack].name;
   }
+  const np=document.getElementById('nowPlaying');
+  if(np)np.innerHTML=name;
+  const hnp=document.getElementById('heroNowPlaying');
+  if(hnp)hnp.innerHTML=name;
 }
 
 // ===== AUDIO ENGINE =====
@@ -900,7 +904,14 @@ function stopMusic(){
 }
 
 // ===== VISUALIZER =====
-function initViz(){const v=document.getElementById('visualizer');v.innerHTML='';for(let i=0;i<18;i++){const b=document.createElement('div');b.className='vb';b.style.height='2px';v.appendChild(b);}}
+function initViz(){
+  ['visualizer','heroVisualizer'].forEach(id=>{
+    const v=document.getElementById(id);
+    if(!v)return;
+    v.innerHTML='';
+    for(let i=0;i<18;i++){const b=document.createElement('div');b.className='vb';b.style.height='2px';v.appendChild(b);}
+  });
+}
 function updateViz(){
   if(!isPlaying){document.querySelectorAll('.vb').forEach(b=>b.style.height='2px');return;}
   document.querySelectorAll('.vb').forEach(b=>{b.style.height=(2+Math.random()*16)+'px';});
@@ -1149,14 +1160,14 @@ function toggleTimerOff(){
   if(isOff){
     timerDisplay.style.display='';
     timerLabel.style.display='';
-    progressWrap.style.display='';
     btn.textContent='タイマー OFF';btn.style.opacity='0.6';
   }else{
     clearInterval(timerInterval);isTimerRunning=false;
     if(autoStartTimer){clearTimeout(autoStartTimer);autoStartTimer=null;}
     timerDisplay.style.display='none';
     timerLabel.style.display='none';
-    progressWrap.style.display='none';
+    // プログレスバーは金色の線として残す
+    document.getElementById('progressBar').style.width='100%';
     btn.textContent='タイマー ON';btn.style.opacity='1';
     if(isDriveTrack&&currentDriveTrack){
       initAudio();isPlaying=true;mp3Player.volume=volume;mp3Player.loop=true;
