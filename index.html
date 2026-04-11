@@ -530,7 +530,14 @@ Googleでログイン
 <span id="personalUserEmail"></span>
 <button class="drive-signout-btn" onclick="signOut()">ログアウト</button>
 </div>
-<input type="text" class="drive-search" id="personalSearchInput" placeholder="🔍 曲名を検索..." oninput="filterPersonalTracks()">
+<div id="personalFolderArea" style="margin-bottom:10px">
+<div style="font-size:0.62rem;color:var(--text-dim);margin-bottom:6px;">Google DriveのフォルダURLを貼り付けてください<br><span style="opacity:0.7">※フォルダを右クリック→「リンクをコピー」で取得</span></div>
+<div style="display:flex;gap:6px;align-items:center;">
+<input type="text" class="drive-search" id="personalFolderUrl" placeholder="https://drive.google.com/drive/folders/..." style="margin-bottom:0;flex:1;font-size:0.6rem">
+<button onclick="loadPersonalFolderFromUrl()" style="padding:7px 12px;border-radius:20px;font-size:0.62rem;border:1px solid rgba(212,165,116,0.30);background:rgba(212,165,116,0.12);color:var(--accent);cursor:pointer;font-family:inherit;white-space:nowrap;">読み込む</button>
+</div>
+</div>
+<input type="text" class="drive-search" id="personalSearchInput" placeholder="🔍 曲名を検索..." oninput="filterPersonalTracks()" style="display:none">
 <div id="personalMsg" class="drive-msg" style="display:none"></div>
 <div class="drive-track-list" id="personalTrackList"></div>
 </div>
@@ -986,7 +993,15 @@ function signInWithGoogle(){
       }catch(e){}
       document.getElementById('personalNotLoggedIn').style.display='none';
       document.getElementById('personalLoggedIn').style.display='';
-      loadPersonalTracks();
+      // 保存済みフォルダIDがあれば自動読み込み
+      try{
+        const savedId=localStorage.getItem(STORAGE_KEY+'personalFolderId');
+        if(savedId){
+          // URLをinputに復元
+          document.getElementById('personalFolderUrl').value='https://drive.google.com/drive/folders/'+savedId;
+          loadPersonalTracks(savedId);
+        }
+      }catch(e){}
     },
   });
   client.requestAccessToken();
@@ -1003,18 +1018,38 @@ function signOut(){
   document.getElementById('personalTrackList').innerHTML='';
 }
 
-async function loadPersonalTracks(){
+function extractFolderIdFromUrl(url){
+  const m=url.match(/folders\/([a-zA-Z0-9_-]+)/);
+  return m?m[1]:null;
+}
+
+async function loadPersonalFolderFromUrl(){
+  const urlInput=document.getElementById('personalFolderUrl');
+  const url=urlInput.value.trim();
+  const folderId=extractFolderIdFromUrl(url);
+  if(!folderId){
+    alert('フォルダのURLが正しくありません。\nGoogle DriveのフォルダURLを貼り付けてください。');
+    return;
+  }
+  // 保存
+  try{localStorage.setItem(STORAGE_KEY+'personalFolderId',folderId);}catch(e){}
+  await loadPersonalTracks(folderId);
+}
+
+async function loadPersonalTracks(folderId){
   if(!googleAccessToken)return;
   const msgEl=document.getElementById('personalMsg');
   const listEl=document.getElementById('personalTrackList');
+  const searchEl=document.getElementById('personalSearchInput');
   if(!msgEl||!listEl)return;
   msgEl.style.display='';msgEl.textContent='マイ曲を読み込んでいます...';
   listEl.innerHTML='';
+  if(searchEl)searchEl.style.display='none';
 
   try{
     let allFiles=[];let pageToken='';
     do{
-      const q=encodeURIComponent("mimeType contains 'audio' and trashed=false");
+      const q=encodeURIComponent(`'${folderId}' in parents and mimeType contains 'audio' and trashed=false`);
       const url=`https://www.googleapis.com/drive/v3/files?q=${q}&fields=nextPageToken,files(id,name)&orderBy=name&pageSize=100${pageToken?'&pageToken='+pageToken:''}`;
       const res=await fetch(url,{headers:{'Authorization':'Bearer '+googleAccessToken}});
       if(!res.ok)throw new Error('API Error: '+res.status);
@@ -1028,9 +1063,10 @@ async function loadPersonalTracks(){
     msgEl.style.display='none';
 
     if(personalTracks.length===0){
-      msgEl.style.display='';msgEl.textContent='Google Driveに音楽ファイルが見つかりませんでした。';
+      msgEl.style.display='';msgEl.textContent='このフォルダに音楽ファイルが見つかりませんでした。';
       return;
     }
+    if(searchEl)searchEl.style.display='';
     renderDriveList('personalTrackList',personalTracks,'personal');
   }catch(e){
     msgEl.style.display='';msgEl.textContent='読み込みエラー: '+e.message;
