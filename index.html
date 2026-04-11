@@ -587,8 +587,8 @@ Googleでログイン
 // ===== DRIVE CONFIG =====
 // ★ 以下の2行に、取得したAPIキーとクライアントIDを貼り付けてください
 const DRIVE_CONFIG = {
-  API_KEY: 'AIzaSyBz4iBkkKOyUvsSNQEeB-d7d6FxD-ErhOM',
-  CLIENT_ID: '20993255895-lenr543jmmobn9pgkt1bdoterfnpi9nq.apps.googleusercontent.com',
+  API_KEY: 'ここにAPIキーを貼り付け',
+  CLIENT_ID: 'ここにクライアントIDを貼り付け.apps.googleusercontent.com',
   SHARED_FOLDER_ID: '1lHOvLuR8HDnEusooshg1U28c_7keEi-I'
 };
 
@@ -1112,7 +1112,9 @@ async function playDriveTrack(track,type){
     let blobUrl=driveCache[track.id];
     if(!blobUrl){
       const isPersonal=type==='personal'&&googleAccessToken;
-      const url=`https://www.googleapis.com/drive/v3/files/${track.id}?alt=media${isPersonal?'':'&key='+DRIVE_CONFIG.API_KEY}`;
+      const url=isPersonal
+        ?`https://www.googleapis.com/drive/v3/files/${track.id}?alt=media&supportsAllDrives=true&acknowledgeAbuse=true`
+        :`https://www.googleapis.com/drive/v3/files/${track.id}?alt=media&key=${DRIVE_CONFIG.API_KEY}`;
       const headers=isPersonal?{'Authorization':'Bearer '+googleAccessToken}:{};
       const res=await fetch(url,{headers});
       if(!res.ok)throw new Error('取得失敗 '+res.status);
