@@ -1141,16 +1141,22 @@ function stopTimer(){
 function skipSession(){completeSession();}
 
 function toggleTimerOff(){
-  const area=document.getElementById('timerArea');
-  const offArea=document.getElementById('timerOffArea');
+  const timerDisplay=document.getElementById('timerDisplay');
+  const timerLabel=document.getElementById('timerLabel');
+  const progressWrap=document.querySelector('.progress-bar-wrap');
   const btn=document.getElementById('timerOffBtn');
-  const isOff=area.style.display==='none';
+  const isOff=timerDisplay.style.display==='none';
   if(isOff){
-    area.style.display='';offArea.style.display='none';
+    timerDisplay.style.display='';
+    timerLabel.style.display='';
+    progressWrap.style.display='';
     btn.textContent='タイマー OFF';btn.style.opacity='0.6';
-    stopMusic();
   }else{
-    stopTimer();area.style.display='none';offArea.style.display='';
+    clearInterval(timerInterval);isTimerRunning=false;
+    if(autoStartTimer){clearTimeout(autoStartTimer);autoStartTimer=null;}
+    timerDisplay.style.display='none';
+    timerLabel.style.display='none';
+    progressWrap.style.display='none';
     btn.textContent='タイマー ON';btn.style.opacity='1';
     if(isDriveTrack&&currentDriveTrack){
       initAudio();isPlaying=true;mp3Player.volume=volume;mp3Player.loop=true;
