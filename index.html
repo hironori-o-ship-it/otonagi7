@@ -1090,7 +1090,7 @@ async function playDriveTrack(track,type){
     mp3Player.volume=volume;
     mp3Player.loop=false;
     mp3Player.play().catch(()=>{});
-    document.getElementById('nowPlaying').innerHTML='♪ '+track.name;
+    updateNowPlaying();
     updateViz();
     randomBg();
   }catch(e){
@@ -1160,6 +1160,7 @@ function toggleTimerOff(){
   if(isOff){
     timerDisplay.style.display='';
     timerLabel.style.display='';
+    progressWrap.style.display='';
     btn.textContent='タイマー OFF';btn.style.opacity='0.6';
   }else{
     clearInterval(timerInterval);isTimerRunning=false;
@@ -1167,6 +1168,7 @@ function toggleTimerOff(){
     timerDisplay.style.display='none';
     timerLabel.style.display='none';
     // プログレスバーは金色の線として残す
+    progressWrap.style.display='';
     document.getElementById('progressBar').style.width='100%';
     btn.textContent='タイマー ON';btn.style.opacity='1';
     if(isDriveTrack&&currentDriveTrack){
