@@ -993,8 +993,10 @@ function signOut(){
 }
 
 async function loadPersonalTracks(){
+  if(!googleAccessToken)return;
   const msgEl=document.getElementById('personalMsg');
   const listEl=document.getElementById('personalTrackList');
+  if(!msgEl||!listEl)return;
   msgEl.style.display='';msgEl.textContent='マイ曲を読み込んでいます...';
   listEl.innerHTML='';
 
