@@ -2,7 +2,7 @@
 <html lang="ja">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
 <title>音凪 - OTONAGI</title>
 <meta name="description" content="音凪 — 集中と静寂のポモドーロタイマー。BGM付きで作業に没頭できるWebアプリ。">
 <meta name="theme-color" content="#0b1220">
@@ -1382,6 +1382,17 @@ async function init(){
   // 標準曲は開いたときに自動読み込み
   loadSharedTracks();
 }
+
+// iPad横縦切り替え対応
+window.addEventListener('orientationchange', function(){
+  setTimeout(function(){
+    window.scrollTo(0,0);
+    document.documentElement.style.height = window.innerHeight + 'px';
+    setTimeout(function(){
+      document.documentElement.style.height = '';
+    }, 200);
+  }, 300);
+});
 
 if('serviceWorker' in navigator){
   navigator.serviceWorker.register('sw.js').catch(()=>{});
