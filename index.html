@@ -560,9 +560,9 @@ Googleでログイン
 <!-- Stats -->
 <div class="stats-panel glass">
 <div class="stats-grid">
-<div><div class="sv" id="completedSessions">０</div><div class="sl">完了</div></div>
-<div><div class="sv" id="totalMinutes">０</div><div class="sl">合計(分)</div></div>
-<div><div class="sv" id="currentStreak">０</div><div class="sl">連続</div></div>
+<div><div class="sv" id="statWork">０</div><div class="sl">作業(分)</div></div>
+<div><div class="sv" id="statShort">０</div><div class="sl">小休憩(分)</div></div>
+<div><div class="sv" id="statLong">０</div><div class="sl">大休憩(分)</div></div>
 </div>
 </div>
 
@@ -587,15 +587,16 @@ Googleでログイン
 // ===== DRIVE CONFIG =====
 // ★ 以下の2行に、取得したAPIキーとクライアントIDを貼り付けてください
 const DRIVE_CONFIG = {
-  API_KEY: 'AIzaSyBz4iBkkKOyUvsSNQEeB-d7d6FxD-ErhOM',
-  CLIENT_ID: '20993255895-lenr543jmmobn9pgkt1bdoterfnpi9nq.apps.googleusercontent.com',
+  API_KEY: 'ここにAPIキーを貼り付け',
+  CLIENT_ID: 'ここにクライアントIDを貼り付け.apps.googleusercontent.com',
   SHARED_FOLDER_ID: '1lHOvLuR8HDnEusooshg1U28c_7keEi-I'
 };
 
 // ===== STATE =====
 let audioCtx=null,masterGain=null,currentNodes=[],isPlaying=false,timerInterval=null;
 let currentMode='work',timeRemaining=25*60,totalTime=25*60,autoStartTimer=null;
-let selectedTrack=0,volume=0.4,completedSessions=0,totalMinutes=0,streak=0,isTimerRunning=false;
+let selectedTrack=0,volume=0.4,isTimerRunning=false;
+let totalWorkMinutes=0,totalShortMinutes=0,totalLongMinutes=0;
 let playMode='select',currentTrackIndex=0;
 const MAX_TRACKS=10,STORAGE_KEY='otonagi_';
 
@@ -1224,10 +1225,19 @@ function completeSession(){
   clearInterval(timerInterval);isTimerRunning=false;stopMusic();playNotif();
   cycleBg();
   if(currentMode==='work'){
-    completedSessions++;totalMinutes+=+document.getElementById('workDuration').value;streak++;updateStats();
+    totalWorkMinutes+=+document.getElementById('workDuration').value;
+    updateStats();
     const iv=+document.getElementById('longBreakInterval').value;
-    currentMode=completedSessions%iv===0?'long':'short';
+    // 大休憩の判定：作業完了回数で判断
+    const workCount=Math.round(totalWorkMinutes/(+document.getElementById('workDuration').value));
+    currentMode=workCount%iv===0?'long':'short';
+  }else if(currentMode==='short'){
+    totalShortMinutes+=+document.getElementById('shortBreakDuration').value;
+    updateStats();
+    currentMode='work';
   }else{
+    totalLongMinutes+=+document.getElementById('longBreakDuration').value;
+    updateStats();
     currentMode='work';
   }
   // 次のセッション用にランダムで曲を変える
@@ -1269,16 +1279,27 @@ function updateProgress(){
 
 function updateStats(){
   const fmt=n=>n>=10000?Math.floor(n/1000)+'k':n;
-  document.getElementById('completedSessions').textContent=fmt(completedSessions);
-  document.getElementById('totalMinutes').textContent=fmt(totalMinutes);
-  document.getElementById('currentStreak').textContent=fmt(streak);
-  try{localStorage.setItem(STORAGE_KEY+'stats',JSON.stringify({completedSessions,totalMinutes,streak}));}catch(e){}
+  document.getElementById('statWork').textContent=fmt(totalWorkMinutes);
+  document.getElementById('statShort').textContent=fmt(totalShortMinutes);
+  document.getElementById('statLong').textContent=fmt(totalLongMinutes);
+  try{
+    const today=new Date().toDateString();
+    localStorage.setItem(STORAGE_KEY+'stats',JSON.stringify({totalWorkMinutes,totalShortMinutes,totalLongMinutes,date:today}));
+  }catch(e){}
 }
 
 function loadStats(){
   try{
+    const today=new Date().toDateString();
     const s=JSON.parse(localStorage.getItem(STORAGE_KEY+'stats')||'{}');
-    completedSessions=s.completedSessions||0;totalMinutes=s.totalMinutes||0;streak=s.streak||0;
+    if(s.date===today){
+      totalWorkMinutes=s.totalWorkMinutes||0;
+      totalShortMinutes=s.totalShortMinutes||0;
+      totalLongMinutes=s.totalLongMinutes||0;
+    }else{
+      // 日付が変わったらリセット
+      totalWorkMinutes=0;totalShortMinutes=0;totalLongMinutes=0;
+    }
     updateStats();
   }catch(e){}
 }
