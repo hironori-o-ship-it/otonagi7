@@ -1570,6 +1570,7 @@ let cdRemaining = 0;
 let cdTotal = 0;
 let cdIs15min = false;
 let cdAnnouncedThree = false;
+let cdWasBgmPlaying = false;
 
 let cdFinishMsg = '';
 
@@ -1595,8 +1596,8 @@ function startCountdownCustom() {
 }
 
 function enterCountdownMode() {
-  // BGM停止
-  const wasPlaing = isPlaying;
+  // BGM状態を保存して停止
+  cdWasBgmPlaying = isPlaying;
   if (isPlaying) { mp3Player.pause(); isPlaying = false; updateNowPlaying(); }
 
   // ポモドーロタイマー停止
@@ -1668,7 +1669,17 @@ function finishCountdown() {
   cdInterval = null;
   playNotif();
   playAnnouncement(cdFinishMsg);
-  setTimeout(() => exitCountdownMode(), 2000);
+  setTimeout(() => {
+    exitCountdownMode();
+    // BGMが流れていた場合は再開
+    if (cdWasBgmPlaying) {
+      initAudio();
+      isPlaying = true;
+      mp3Player.play().catch(() => {});
+      updateNowPlaying();
+      updateViz();
+    }
+  }, 2000);
 }
 
 function stopCountdown() {
