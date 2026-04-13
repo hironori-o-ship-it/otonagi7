@@ -1601,16 +1601,19 @@ function startCountdownCustom() {
 function enterCountdownMode() {
   // タイマーOFF状態なら自動解除
   const timerDisplay = document.getElementById('timerDisplay');
-  if (timerDisplay.style.display === 'none') {
+  const isTimerOff = timerDisplay.style.display === 'none';
+  if (isTimerOff) {
     timerDisplay.style.display = '';
     document.getElementById('timerLabel').style.display = '';
     document.getElementById('timerOffBtn').textContent = 'タイマー OFF';
     document.getElementById('timerOffBtn').style.opacity = '0.6';
-    document.getElementById('progressBar').style.width = '100%';
   }
-  // BGM状態を保存して停止
-  cdWasBgmPlaying = isPlaying;
-  if (isPlaying) { mp3Player.pause(); isPlaying = false; updateNowPlaying(); }
+  // BGM状態を保存して停止（タイマーOFF中のループ再生も含む）
+  cdWasBgmPlaying = isPlaying || isTimerOff;
+  mp3Player.pause();
+  mp3Player.loop = false;
+  isPlaying = false;
+  updateNowPlaying();
 
   // ポモドーロタイマー停止
   if (isTimerRunning) pauseTimer();
