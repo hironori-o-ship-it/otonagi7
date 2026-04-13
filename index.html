@@ -1651,7 +1651,7 @@ let cdPaused = false;
 
 function pauseResumeCountdown() {
   if (!cdInterval && cdPaused) {
-    // 再開
+    // 再開 - BGMは停止したまま
     cdPaused = false;
     document.getElementById('startBtn').textContent = '一時停止';
     cdInterval = setInterval(() => {
@@ -1671,11 +1671,19 @@ function pauseResumeCountdown() {
       updateCdProgress();
     }, 1000);
   } else {
-    // 一時停止
+    // 一時停止 → BGM再開
     cdPaused = true;
     clearInterval(cdInterval);
     cdInterval = null;
     document.getElementById('startBtn').textContent = '再開';
+    if (cdWasBgmPlaying) {
+      initAudio();
+      isPlaying = true;
+      mp3Player.loop = false;
+      mp3Player.play().catch(() => {});
+      updateNowPlaying();
+      updateViz();
+    }
   }
 }
 
@@ -1686,14 +1694,6 @@ function finishCountdown() {
   playAnnouncement(cdFinishMsg);
   setTimeout(() => {
     exitCountdownMode();
-    // BGMが流れていた場合は再開
-    if (cdWasBgmPlaying) {
-      initAudio();
-      isPlaying = true;
-      mp3Player.play().catch(() => {});
-      updateNowPlaying();
-      updateViz();
-    }
   }, 2000);
 }
 
@@ -1708,6 +1708,7 @@ function exitCountdownMode() {
   cdInterval = null;
   cdPaused = false;
   document.getElementById('timerDisplay').classList.remove('countdown-mode');
+  document.getElementById('progressBar').style.background = '';
   document.getElementById('timerLabel').textContent = 'スタート';
   document.getElementById('startBtn').textContent = 'スタート';
   document.getElementById('startBtn').onclick = toggleTimer;
@@ -1715,6 +1716,15 @@ function exitCountdownMode() {
   // プログレスバーをポモドーロ状態に戻す
   updateProgress();
   updateTimerDisplay();
+  // BGMが流れていた場合は再開
+  if (cdWasBgmPlaying) {
+    initAudio();
+    isPlaying = true;
+    mp3Player.loop = false;
+    mp3Player.play().catch(() => {});
+    updateNowPlaying();
+    updateViz();
+  }
 }
 
 function updateCdDisplay() {
