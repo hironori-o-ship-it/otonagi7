@@ -1581,6 +1581,7 @@ function startCountdown(minutes) {
   cdTotal = minutes * 60;
   cdRemaining = cdTotal;
   cdFinishMsg = document.getElementById('cdMsg15').value.trim() || 'タイマーが終了しました';
+  try{localStorage.setItem(STORAGE_KEY+'cdMsg15', document.getElementById('cdMsg15').value.trim());}catch(e){}
   enterCountdownMode();
 }
 
@@ -1592,10 +1593,21 @@ function startCountdownCustom() {
   cdTotal = min * 60;
   cdRemaining = cdTotal;
   cdFinishMsg = document.getElementById('cdMsgCustom').value.trim() || 'タイマーが終了しました';
+  try{localStorage.setItem(STORAGE_KEY+'cdMsgCustom', document.getElementById('cdMsgCustom').value.trim());}catch(e){}
+  try{localStorage.setItem(STORAGE_KEY+'cdCustomMin', document.getElementById('cdCustomMin').value);}catch(e){}
   enterCountdownMode();
 }
 
 function enterCountdownMode() {
+  // タイマーOFF状態なら自動解除
+  const timerDisplay = document.getElementById('timerDisplay');
+  if (timerDisplay.style.display === 'none') {
+    timerDisplay.style.display = '';
+    document.getElementById('timerLabel').style.display = '';
+    document.getElementById('timerOffBtn').textContent = 'タイマー OFF';
+    document.getElementById('timerOffBtn').style.opacity = '0.6';
+    document.getElementById('progressBar').style.width = '100%';
+  }
   // BGM状態を保存して停止
   cdWasBgmPlaying = isPlaying;
   if (isPlaying) { mp3Player.pause(); isPlaying = false; updateNowPlaying(); }
@@ -1736,6 +1748,15 @@ async function init(){
     updateDurations();
   }catch(e){}
   loadAnnouncements();
+  // カウントダウンメッセージ復元
+  try{
+    const msg15=localStorage.getItem(STORAGE_KEY+'cdMsg15');
+    if(msg15)document.getElementById('cdMsg15').value=msg15;
+    const msgCustom=localStorage.getItem(STORAGE_KEY+'cdMsgCustom');
+    if(msgCustom)document.getElementById('cdMsgCustom').value=msgCustom;
+    const cdMin=localStorage.getItem(STORAGE_KEY+'cdCustomMin');
+    if(cdMin)document.getElementById('cdCustomMin').value=cdMin;
+  }catch(e){}
   // 標準曲は開いたときに自動読み込み
   loadSharedTracks();
 }
