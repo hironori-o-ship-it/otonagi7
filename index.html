@@ -590,16 +590,25 @@ Googleでログイン
 <div style="margin-top:18px;padding-top:14px;border-top:1px solid rgba(255,255,255,0.06);">
 <div style="font-size:0.72rem;color:var(--accent);font-weight:500;letter-spacing:0.1em;margin-bottom:12px;">カウントダウンタイマー</div>
 <div style="font-size:0.64rem;color:var(--text-dim);margin-bottom:10px;">ポモドーロと独立したシンプルなタイマーです。稼働中はBGMが停止します。</div>
-<div class="setting-row" style="margin-bottom:8px;">
-  <label>15分タイマー</label>
-  <button class="g-btn btn-sub" id="cdTimer15Btn" onclick="startCountdown(15)" style="font-size:0.62rem;padding:5px 16px;width:auto;">スタート</button>
-</div>
-<div class="setting-row" style="margin-bottom:8px;">
-  <label>自由設定（分）</label>
-  <div style="display:flex;gap:6px;align-items:center;">
-    <input type="number" id="cdCustomMin" value="20" min="1" max="180" style="width:60px;padding:5px 8px;border-radius:10px;border:1px solid var(--glass-border);background:rgba(255,255,255,0.04);color:var(--text);font-family:inherit;font-size:0.78rem;text-align:center;">
-    <button class="g-btn btn-sub" id="cdTimerCustomBtn" onclick="startCountdownCustom()" style="font-size:0.62rem;padding:5px 16px;width:auto;">スタート</button>
+<div style="margin-bottom:10px;">
+  <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:5px;">
+    <label style="font-size:0.72rem;color:var(--text-mid);">15分タイマー</label>
+    <button class="g-btn btn-sub" id="cdTimer15Btn" onclick="startCountdown(15)" style="font-size:0.62rem;padding:5px 16px;width:auto;">スタート</button>
   </div>
+  <input type="text" id="cdMsg15" placeholder="終了メッセージ（例：休憩にしましょう）" style="width:100%;padding:5px 10px;border-radius:10px;border:1px solid var(--glass-border);background:rgba(255,255,255,0.04);color:var(--text);font-family:inherit;font-size:0.64rem;">
+  <div style="font-size:0.56rem;color:var(--text-dim);margin-top:4px;opacity:0.7;">※ 省略時は「タイマーが終了しました」と読み上げます</div>
+</div>
+<div style="margin-bottom:10px;">
+  <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:5px;">
+    <label style="font-size:0.72rem;color:var(--text-mid);">自由設定</label>
+    <div style="display:flex;gap:6px;align-items:center;">
+      <input type="number" id="cdCustomMin" value="20" min="1" max="180" style="width:55px;padding:5px 6px;border-radius:10px;border:1px solid var(--glass-border);background:rgba(255,255,255,0.04);color:var(--text);font-family:inherit;font-size:0.78rem;text-align:center;">
+      <span style="font-size:0.64rem;color:var(--text-dim);">分</span>
+      <button class="g-btn btn-sub" id="cdTimerCustomBtn" onclick="startCountdownCustom()" style="font-size:0.62rem;padding:5px 16px;width:auto;">スタート</button>
+    </div>
+  </div>
+  <input type="text" id="cdMsgCustom" placeholder="終了メッセージ（省略可）" style="width:100%;padding:5px 10px;border-radius:10px;border:1px solid var(--glass-border);background:rgba(255,255,255,0.04);color:var(--text);font-family:inherit;font-size:0.64rem;">
+  <div style="font-size:0.56rem;color:var(--text-dim);margin-top:4px;opacity:0.7;">※ 省略時は「タイマーが終了しました」と読み上げます</div>
 </div>
 <div id="cdStatusBar" style="display:none;margin-top:8px;padding:8px 12px;border-radius:10px;background:rgba(0,200,255,0.08);border:1px solid rgba(0,200,255,0.20);font-size:0.66rem;color:rgba(0,220,255,0.9);text-align:center;">
   カウントダウン稼働中
@@ -1562,22 +1571,26 @@ let cdTotal = 0;
 let cdIs15min = false;
 let cdAnnouncedThree = false;
 
+let cdFinishMsg = '';
+
 function startCountdown(minutes) {
-  if (cdInterval) stopCountdown();
+  if (cdInterval || cdPaused) stopCountdown();
   cdIs15min = (minutes === 15);
   cdAnnouncedThree = false;
   cdTotal = minutes * 60;
   cdRemaining = cdTotal;
+  cdFinishMsg = document.getElementById('cdMsg15').value.trim() || 'タイマーが終了しました';
   enterCountdownMode();
 }
 
 function startCountdownCustom() {
   const min = parseInt(document.getElementById('cdCustomMin').value) || 20;
-  if (cdInterval) stopCountdown();
+  if (cdInterval || cdPaused) stopCountdown();
   cdIs15min = false;
   cdAnnouncedThree = false;
   cdTotal = min * 60;
   cdRemaining = cdTotal;
+  cdFinishMsg = document.getElementById('cdMsgCustom').value.trim() || 'タイマーが終了しました';
   enterCountdownMode();
 }
 
@@ -1654,7 +1667,7 @@ function finishCountdown() {
   clearInterval(cdInterval);
   cdInterval = null;
   playNotif();
-  playAnnouncement('タイマーが終了しました');
+  playAnnouncement(cdFinishMsg);
   setTimeout(() => exitCountdownMode(), 2000);
 }
 
