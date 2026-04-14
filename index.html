@@ -427,6 +427,7 @@ border:1px solid rgba(255,255,255,0.05);}
 <div class="hero-bg-layer" id="bgLayer3"></div>
 <div class="hero-fallback"></div>
 <button class="bg-load-btn" onclick="document.getElementById('bgImageInput').click()" title="背景画像を追加">🖼</button>
+<button class="bg-load-btn" onclick="refreshApp()" title="アプリを更新" style="right:50px;font-size:0.6rem;">↻</button>
 <input type="file" id="bgImageInput" accept="image/*" multiple style="display:none" onchange="loadBgImages(event)">
 <div class="hero-content">
 <div class="hero-title">
@@ -1829,6 +1830,21 @@ window.addEventListener('orientationchange', function(){
     }, 200);
   }, 300);
 });
+
+// ===== アプリ更新 =====
+function refreshApp(){
+  if('serviceWorker' in navigator && navigator.serviceWorker.controller){
+    navigator.serviceWorker.getRegistrations().then(regs=>{
+      regs.forEach(reg=>reg.unregister());
+      caches.keys().then(keys=>{
+        keys.forEach(key=>caches.delete(key));
+        setTimeout(()=>location.reload(true), 300);
+      });
+    });
+  } else {
+    location.reload(true);
+  }
+}
 
 if('serviceWorker' in navigator){
   navigator.serviceWorker.register('sw.js').catch(()=>{});
