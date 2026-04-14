@@ -638,8 +638,8 @@ Googleでログイン
 // ===== DRIVE CONFIG =====
 // ★ 以下の2行に、取得したAPIキーとクライアントIDを貼り付けてください
 const DRIVE_CONFIG = {
-  API_KEY: 'AIzaSyBz4iBkkKOyUvsSNQEeB-d7d6FxD-ErhOM',
-  CLIENT_ID: '20993255895-lenr543jmmobn9pgkt1bdoterfnpi9nq.apps.googleusercontent.com',
+  API_KEY: 'ここにAPIキーを貼り付け',
+  CLIENT_ID: 'ここにクライアントIDを貼り付け.apps.googleusercontent.com',
   SHARED_FOLDER_ID: '1lHOvLuR8HDnEusooshg1U28c_7keEi-I'
 };
 
@@ -1577,43 +1577,50 @@ function playAnnouncement(msg) {
   initAudio();
   const ctx = audioCtx;
 
-  // ぴ・ぴ・ぴ・ぴー の4音（短い3音＋長い1音）
-  const beeps = [
-    { freq: 1760, dur: 0.12, gap: 0.22 },
-    { freq: 1760, dur: 0.12, gap: 0.22 },
-    { freq: 1760, dur: 0.12, gap: 0.22 },
-    { freq: 1760, dur: 0.55, gap: 0 },
+  // ぴ・ぴ・ぴ・ぴー → ボーン → ボーン → ピー
+  const sounds = [
+    // ぴ×3（短）
+    { freq: 1760, dur: 0.12, gap: 0.22, type: 'sine', vol: 1.0 },
+    { freq: 1760, dur: 0.12, gap: 0.22, type: 'sine', vol: 1.0 },
+    { freq: 1760, dur: 0.12, gap: 0.22, type: 'sine', vol: 1.0 },
+    // ぴー（長）
+    { freq: 1760, dur: 0.55, gap: 0.4,  type: 'sine', vol: 1.0 },
+    // ボーン×2（低い）
+    { freq: 220,  dur: 0.8,  gap: 0.5,  type: 'sine', vol: 0.9 },
+    { freq: 220,  dur: 0.8,  gap: 0.4,  type: 'sine', vol: 0.9 },
+    // ピー（締め）
+    { freq: 880,  dur: 0.4,  gap: 0,    type: 'sine', vol: 0.8 },
   ];
 
   let offset = 0;
-  beeps.forEach((b) => {
+  sounds.forEach((s) => {
     const osc = ctx.createOscillator();
     const gain = ctx.createGain();
     osc.connect(gain); gain.connect(ctx.destination);
-    osc.type = 'sine';
-    osc.frequency.value = b.freq;
+    osc.type = s.type;
+    osc.frequency.value = s.freq;
     const t = ctx.currentTime + offset;
     gain.gain.setValueAtTime(0, t);
-    gain.gain.linearRampToValueAtTime(1.0, t + 0.01);
-    gain.gain.setValueAtTime(1.0, t + b.dur - 0.02);
-    gain.gain.linearRampToValueAtTime(0, t + b.dur);
-    osc.start(t); osc.stop(t + b.dur);
-    offset += b.dur + b.gap;
+    gain.gain.linearRampToValueAtTime(s.vol, t + 0.02);
+    gain.gain.setValueAtTime(s.vol, t + s.dur - 0.05);
+    gain.gain.linearRampToValueAtTime(0, t + s.dur);
+    osc.start(t); osc.stop(t + s.dur);
+    offset += s.dur + s.gap;
   });
 
-  // チャイム終了後に読み上げ
+  // 音終了後にBGM音量を戻す
   setTimeout(() => {
+    mp3Player.volume = originalVolume;
+    // 読み上げ（Androidのみ動作する可能性あり）
     if ('speechSynthesis' in window) {
+      window.speechSynthesis.cancel();
       const utter = new SpeechSynthesisUtterance(msg);
       utter.lang = 'ja-JP';
       utter.rate = 0.85;
       utter.volume = 1.0;
-      utter.onend = () => { setTimeout(() => { mp3Player.volume = originalVolume; }, 300); };
       window.speechSynthesis.speak(utter);
-    } else {
-      setTimeout(() => { mp3Player.volume = originalVolume; }, 1000);
     }
-  }, 1400);
+  }, offset * 1000 + 200);
 }
 
 setInterval(checkAnnouncement, 10000);
