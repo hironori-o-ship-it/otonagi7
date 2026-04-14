@@ -1664,8 +1664,14 @@ function enterCountdownMode() {
     }
   }
 
-  // ポモドーロタイマー停止
-  if (isTimerRunning) pauseTimer();
+  // ポモドーロタイマー停止（BGMは止めない）
+  if (isTimerRunning) {
+    isTimerRunning = false;
+    clearInterval(timerInterval);
+    if (autoStartTimer) { clearTimeout(autoStartTimer); autoStartTimer = null; }
+    document.getElementById('startBtn').textContent = 'スタート';
+    document.getElementById('timerLabel').textContent = 'スタート';
+  }
 
   // UI切替
   document.getElementById('timerDisplay').classList.add('countdown-mode');
