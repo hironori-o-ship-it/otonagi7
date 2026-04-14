@@ -637,8 +637,8 @@ Googleでログイン
 // ===== DRIVE CONFIG =====
 // ★ 以下の2行に、取得したAPIキーとクライアントIDを貼り付けてください
 const DRIVE_CONFIG = {
-  API_KEY: 'AIzaSyBz4iBkkKOyUvsSNQEeB-d7d6FxD-ErhOM',
-  CLIENT_ID: '20993255895-lenr543jmmobn9pgkt1bdoterfnpi9nq.apps.googleusercontent.com',
+  API_KEY: 'ここにAPIキーを貼り付け',
+  CLIENT_ID: 'ここにクライアントIDを貼り付け.apps.googleusercontent.com',
   SHARED_FOLDER_ID: '1lHOvLuR8HDnEusooshg1U28c_7keEi-I'
 };
 
@@ -1167,7 +1167,7 @@ async function playDriveTrack(track,type){
         ?`https://www.googleapis.com/drive/v3/files/${track.id}?alt=media&supportsAllDrives=true&acknowledgeAbuse=true`
         :`https://www.googleapis.com/drive/v3/files/${track.id}?alt=media&key=${DRIVE_CONFIG.API_KEY}`;
       const headers=isPersonal?{'Authorization':'Bearer '+googleAccessToken}:{};
-      const res=await fetch(url,{headers});
+      const res=await fetch(url,{headers, mode:'cors', cache:'force-cache'});
       if(!res.ok)throw new Error('取得失敗 '+res.status);
       const blob=await res.blob();
       blobUrl=URL.createObjectURL(blob);
@@ -1274,7 +1274,7 @@ function toggleTimerOff(){
 }
 
 function completeSession(){
-  clearInterval(timerInterval);isTimerRunning=false;stopMusic();playNotif();
+  clearInterval(timerInterval);isTimerRunning=false;stopMusic();playNotif();speakPomodoroMessage();
   cycleBg();
   if(currentMode==='work'){
     totalWorkMinutes+=+document.getElementById('workDuration').value;
@@ -1366,6 +1366,32 @@ function updateDurations(){
       const el=document.getElementById(id);if(el)localStorage.setItem(STORAGE_KEY+id,el.value);
     });
   }catch(e){}
+}
+
+// ===== ポモドーロ終了メッセージ =====
+const POMODORO_MESSAGES = [
+  'よくがんばりました。少し深呼吸してみましょう。',
+  'お疲れ様です。肩の力を抜いて、ゆっくり休んでください。',
+  'ちょっと一息。窓の外を眺めてみましょう。',
+  '集中お疲れ様でした。温かい飲み物はいかがですか。',
+  '休憩は次の集中のための投資です。しっかり休みましょう。',
+  'よく集中できました。目を閉じて、少し休んでください。',
+  '素晴らしい集中力でした。軽くストレッチしてみましょう。',
+  'お疲れ様でした。水を一杯飲んで、リフレッシュしましょう。',
+  '休憩時間です。スマホを置いて、ゆったり過ごしましょう。',
+  'よくやりました。焦らず、自分のペースで進みましょう。',
+];
+
+function speakPomodoroMessage() {
+  if (!('speechSynthesis' in window)) return;
+  const msg = POMODORO_MESSAGES[Math.floor(Math.random() * POMODORO_MESSAGES.length)];
+  setTimeout(() => {
+    const utter = new SpeechSynthesisUtterance(msg);
+    utter.lang = 'ja-JP';
+    utter.rate = 0.85;
+    utter.volume = 1.0;
+    window.speechSynthesis.speak(utter);
+  }, 2000);
 }
 
 // ===== NHK CHIME =====
@@ -1464,8 +1490,10 @@ function saveAnnouncements(){
 }
 
 function getAutoMsg(h, m){
-  if(m===0) return h+'時です';
-  return h+'時'+m+'分です';
+  const ampm = h < 12 ? '午前' : '午後';
+  const h12 = h === 0 ? 12 : h > 12 ? h - 12 : h;
+  if(m===0) return ampm + h12 + '時をお知らせします';
+  return ampm + h12 + '時' + m + '分をお知らせします';
 }
 
 function renderAnnouncementList(){
@@ -1532,34 +1560,49 @@ function checkAnnouncement() {
 }
 
 function playAnnouncement(msg) {
-  const originalVolume = volume;
-  mp3Player.volume = originalVolume * 0.2;
+  // BGMを一時的に下げる
+  const originalVolume = mp3Player.volume;
+  mp3Player.volume = originalVolume * 0.15;
   initAudio();
   const ctx = audioCtx;
-  const freqs = [659.25, 523.25, 392.00, 523.25];
-  freqs.forEach((freq, i) => {
+
+  // ぴ・ぴ・ぴ・ぴー の4音（短い3音＋長い1音）
+  const beeps = [
+    { freq: 1760, dur: 0.12, gap: 0.22 },
+    { freq: 1760, dur: 0.12, gap: 0.22 },
+    { freq: 1760, dur: 0.12, gap: 0.22 },
+    { freq: 1760, dur: 0.55, gap: 0 },
+  ];
+
+  let offset = 0;
+  beeps.forEach((b) => {
     const osc = ctx.createOscillator();
     const gain = ctx.createGain();
     osc.connect(gain); gain.connect(ctx.destination);
-    osc.type = 'sine'; osc.frequency.value = freq;
-    const t = ctx.currentTime + i * 0.35;
+    osc.type = 'sine';
+    osc.frequency.value = b.freq;
+    const t = ctx.currentTime + offset;
     gain.gain.setValueAtTime(0, t);
-    gain.gain.linearRampToValueAtTime(0.3, t + 0.02);
-    gain.gain.exponentialRampToValueAtTime(0.001, t + 0.9);
-    osc.start(t); osc.stop(t + 0.9);
+    gain.gain.linearRampToValueAtTime(1.0, t + 0.01);
+    gain.gain.setValueAtTime(1.0, t + b.dur - 0.02);
+    gain.gain.linearRampToValueAtTime(0, t + b.dur);
+    osc.start(t); osc.stop(t + b.dur);
+    offset += b.dur + b.gap;
   });
+
+  // チャイム終了後に読み上げ
   setTimeout(() => {
     if ('speechSynthesis' in window) {
       const utter = new SpeechSynthesisUtterance(msg);
       utter.lang = 'ja-JP';
-      utter.rate = 0.9;
+      utter.rate = 0.85;
       utter.volume = 1.0;
-      utter.onend = () => { setTimeout(() => { mp3Player.volume = originalVolume; }, 500); };
+      utter.onend = () => { setTimeout(() => { mp3Player.volume = originalVolume; }, 300); };
       window.speechSynthesis.speak(utter);
     } else {
       setTimeout(() => { mp3Player.volume = originalVolume; }, 1000);
     }
-  }, 1800);
+  }, 1400);
 }
 
 setInterval(checkAnnouncement, 10000);
@@ -1608,12 +1651,17 @@ function enterCountdownMode() {
     document.getElementById('timerOffBtn').textContent = 'タイマー OFF';
     document.getElementById('timerOffBtn').style.opacity = '0.6';
   }
-  // BGM状態を保存して停止（タイマーOFF中のループ再生も含む）
+  // BGM状態を保存して音量50%に（停止しない）
   cdWasBgmPlaying = isPlaying || isTimerOff;
-  mp3Player.pause();
-  mp3Player.loop = false;
-  isPlaying = false;
-  updateNowPlaying();
+  if (cdWasBgmPlaying) {
+    mp3Player.loop = false;
+    mp3Player.volume = volume * 0.5;
+    if (!isPlaying) {
+      initAudio();
+      isPlaying = true;
+      mp3Player.play().catch(() => {});
+    }
+  }
 
   // ポモドーロタイマー停止
   if (isTimerRunning) pauseTimer();
@@ -1671,18 +1719,13 @@ function pauseResumeCountdown() {
       updateCdProgress();
     }, 1000);
   } else {
-    // 一時停止 → BGM再開
+    // 一時停止 → BGM音量を元に戻す
     cdPaused = true;
     clearInterval(cdInterval);
     cdInterval = null;
     document.getElementById('startBtn').textContent = '再開';
     if (cdWasBgmPlaying) {
-      initAudio();
-      isPlaying = true;
-      mp3Player.loop = false;
-      mp3Player.play().catch(() => {});
-      updateNowPlaying();
-      updateViz();
+      mp3Player.volume = volume;
     }
   }
 }
@@ -1716,14 +1759,16 @@ function exitCountdownMode() {
   // プログレスバーをポモドーロ状態に戻す
   updateProgress();
   updateTimerDisplay();
-  // BGMが流れていた場合は再開
+  // BGM音量を元に戻す
   if (cdWasBgmPlaying) {
-    initAudio();
-    isPlaying = true;
-    mp3Player.loop = false;
-    mp3Player.play().catch(() => {});
-    updateNowPlaying();
-    updateViz();
+    mp3Player.volume = volume;
+    if (!isPlaying) {
+      initAudio();
+      isPlaying = true;
+      mp3Player.play().catch(() => {});
+      updateNowPlaying();
+      updateViz();
+    }
   }
 }
 
