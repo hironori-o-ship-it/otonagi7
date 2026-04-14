@@ -638,8 +638,8 @@ Googleでログイン
 // ===== DRIVE CONFIG =====
 // ★ 以下の2行に、取得したAPIキーとクライアントIDを貼り付けてください
 const DRIVE_CONFIG = {
-  API_KEY: 'AIzaSyBz4iBkkKOyUvsSNQEeB-d7d6FxD-ErhOM',
-  CLIENT_ID: '20993255895-lenr543jmmobn9pgkt1bdoterfnpi9nq.apps.googleusercontent.com',
+  API_KEY: 'ここにAPIキーを貼り付け',
+  CLIENT_ID: 'ここにクライアントIDを貼り付け.apps.googleusercontent.com',
   SHARED_FOLDER_ID: '1lHOvLuR8HDnEusooshg1U28c_7keEi-I'
 };
 
@@ -1386,13 +1386,23 @@ const POMODORO_MESSAGES = [
 function speakPomodoroMessage() {
   if (!('speechSynthesis' in window)) return;
   const msg = POMODORO_MESSAGES[Math.floor(Math.random() * POMODORO_MESSAGES.length)];
+  // iOSはspeechSynthesisがキューに詰まることがあるのでキャンセルしてから実行
+  window.speechSynthesis.cancel();
   setTimeout(() => {
     const utter = new SpeechSynthesisUtterance(msg);
     utter.lang = 'ja-JP';
     utter.rate = 0.85;
+    utter.pitch = 1.0;
     utter.volume = 1.0;
+    // iOSのバグ対策：長い読み上げが途中で止まる問題を防ぐ
+    const resumeTimer = setInterval(() => {
+      if (!window.speechSynthesis.speaking) { clearInterval(resumeTimer); return; }
+      window.speechSynthesis.pause();
+      window.speechSynthesis.resume();
+    }, 5000);
+    utter.onend = () => clearInterval(resumeTimer);
     window.speechSynthesis.speak(utter);
-  }, 2000);
+  }, 2500);
 }
 
 // ===== NHK CHIME =====
