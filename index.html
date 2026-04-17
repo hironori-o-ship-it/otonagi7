@@ -988,6 +988,16 @@ function switchBgmTab(tab){
   if(tab==='shared'&&!sharedTracksLoaded)loadSharedTracks();
 }
 
+// ===== Fisher-Yatesシャッフル =====
+function shuffleArray(arr) {
+  const a = [...arr];
+  for (let i = a.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [a[i], a[j]] = [a[j], a[i]];
+  }
+  return a;
+}
+
 // ===== SHARED LIBRARY =====
 async function loadSharedTracks(){
   const listEl=document.getElementById('sharedTrackList');
@@ -1010,7 +1020,7 @@ async function loadSharedTracks(){
       pageToken=data.nextPageToken||'';
     }while(pageToken);
 
-    sharedTracks=allFiles.map(f=>({id:f.id,name:f.name.replace(/\.[^.]+$/,'')}));
+    sharedTracks=shuffleArray(allFiles.map(f=>({id:f.id,name:f.name.replace(/\.[^.]+$/,'')})));
     sharedTracksLoaded=true;
     msgEl.style.display='none';
     renderDriveList('sharedTrackList',sharedTracks,'shared');
@@ -1111,7 +1121,7 @@ async function loadPersonalTracks(folderId){
       pageToken=data.nextPageToken||'';
     }while(pageToken);
 
-    personalTracks=allFiles.map(f=>({id:f.id,name:f.name.replace(/\.[^.]+$/,'')}));
+    personalTracks=shuffleArray(allFiles.map(f=>({id:f.id,name:f.name.replace(/\.[^.]+$/,'')})));
     msgEl.style.display='none';
 
     if(personalTracks.length===0){
