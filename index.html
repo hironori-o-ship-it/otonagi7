@@ -1589,17 +1589,17 @@ function playAnnouncement(msg) {
 
   // ぴ・ぴ・ぴ・ぴー → ボーン → ボーン → ピー
   const sounds = [
-    // ぴ×3（短）
-    { freq: 1760, dur: 0.12, gap: 0.22, type: 'sine', vol: 1.0 },
-    { freq: 1760, dur: 0.12, gap: 0.22, type: 'sine', vol: 1.0 },
-    { freq: 1760, dur: 0.12, gap: 0.22, type: 'sine', vol: 1.0 },
-    // ぴー（長）
-    { freq: 1760, dur: 0.55, gap: 0.4,  type: 'sine', vol: 1.0 },
-    // ボーン×2（低い）
-    { freq: 220,  dur: 0.8,  gap: 0.5,  type: 'sine', vol: 0.9 },
-    { freq: 220,  dur: 0.8,  gap: 0.4,  type: 'sine', vol: 0.9 },
-    // ピー（締め）
-    { freq: 880,  dur: 0.4,  gap: 0,    type: 'sine', vol: 0.8 },
+    // ぴ×3（間隔ゆったり）
+    { freq: 1760, dur: 0.18, gap: 0.32, type: 'sine', vol: 1.0 },
+    { freq: 1760, dur: 0.18, gap: 0.32, type: 'sine', vol: 1.0 },
+    { freq: 1760, dur: 0.18, gap: 0.32, type: 'sine', vol: 1.0 },
+    // ぴーーー（長め）
+    { freq: 1760, dur: 0.9,  gap: 0.6,  type: 'sine', vol: 1.0 },
+    // ボーーン×2（低い、長め）
+    { freq: 185,  dur: 1.2,  gap: 0.7,  type: 'sine', vol: 1.0 },
+    { freq: 185,  dur: 1.2,  gap: 0.6,  type: 'sine', vol: 1.0 },
+    // ピーーー（締め、長め）
+    { freq: 880,  dur: 0.7,  gap: 0,    type: 'sine', vol: 0.9 },
   ];
 
   let offset = 0;
