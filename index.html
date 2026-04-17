@@ -638,8 +638,8 @@ Googleでログイン
 // ===== DRIVE CONFIG =====
 // ★ 以下の2行に、取得したAPIキーとクライアントIDを貼り付けてください
 const DRIVE_CONFIG = {
-  API_KEY: 'AIzaSyBz4iBkkKOyUvsSNQEeB-d7d6FxD-ErhOM',
-  CLIENT_ID: '20993255895-lenr543jmmobn9pgkt1bdoterfnpi9nq.apps.googleusercontent.com',
+  API_KEY: 'ここにAPIキーを貼り付け',
+  CLIENT_ID: 'ここにクライアントIDを貼り付け.apps.googleusercontent.com',
   SHARED_FOLDER_ID: '1lHOvLuR8HDnEusooshg1U28c_7keEi-I'
 };
 
@@ -1011,7 +1011,7 @@ async function loadSharedTracks(){
     let pageToken='';
     do{
       const q=encodeURIComponent(`'${DRIVE_CONFIG.SHARED_FOLDER_ID}' in parents and mimeType contains 'audio' and trashed=false`);
-      const url=`https://www.googleapis.com/drive/v3/files?q=${q}&fields=nextPageToken,files(id,name)&orderBy=name&pageSize=100&key=${DRIVE_CONFIG.API_KEY}${pageToken?'&pageToken='+pageToken:''}`;
+      const url=`https://www.googleapis.com/drive/v3/files?q=${q}&fields=nextPageToken,files(id,name)&orderBy=name&pageSize=1000&key=${DRIVE_CONFIG.API_KEY}${pageToken?'&pageToken='+pageToken:''}`;
       const res=await fetch(url);
       if(!res.ok)throw new Error('API Error: '+res.status);
       const data=await res.json();
@@ -1112,7 +1112,7 @@ async function loadPersonalTracks(folderId){
     let allFiles=[];let pageToken='';
     do{
       const q=encodeURIComponent(`'${folderId}' in parents and mimeType contains 'audio' and trashed=false`);
-      const url=`https://www.googleapis.com/drive/v3/files?q=${q}&fields=nextPageToken,files(id,name)&orderBy=name&pageSize=100${pageToken?'&pageToken='+pageToken:''}`;
+      const url=`https://www.googleapis.com/drive/v3/files?q=${q}&fields=nextPageToken,files(id,name)&orderBy=name&pageSize=1000${pageToken?'&pageToken='+pageToken:''}`;
       const res=await fetch(url,{headers:{'Authorization':'Bearer '+googleAccessToken}});
       if(!res.ok)throw new Error('API Error: '+res.status);
       const data=await res.json();
