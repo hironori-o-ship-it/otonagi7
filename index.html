@@ -1141,21 +1141,47 @@ function filterPersonalTracks(){
   renderDriveList('personalTrackList',filtered,'personal');
 }
 
-function renderDriveList(containerId,tracks,type){
-  const listEl=document.getElementById(containerId);
-  listEl.innerHTML='';
-  if(tracks.length===0){
-    listEl.innerHTML='<div class="drive-msg">曲が見つかりません</div>';return;
+const RENDER_BATCH = 100;
+const renderState = {};
+
+function renderDriveList(containerId, tracks, type, append=false) {
+  const listEl = document.getElementById(containerId);
+  if (!append) {
+    listEl.innerHTML = '';
+    renderState[containerId] = { tracks, type, shown: 0 };
   }
-  tracks.forEach((track,i)=>{
-    const item=document.createElement('div');
-    item.className='drive-track-item';
-    item.id='dt-'+track.id;
-    if(isDriveTrack&&currentDriveTrack&&currentDriveTrack.id===track.id)item.classList.add('playing');
-    item.innerHTML=`<span class="drive-track-num">${i+1}</span><span class="drive-track-name">${track.name}</span><span class="drive-track-status" id="dts-${track.id}"></span>`;
-    item.onclick=()=>playDriveTrack(track,type);
+  if (tracks.length === 0) {
+    listEl.innerHTML = '<div class="drive-msg">曲が見つかりません</div>'; return;
+  }
+  const state = renderState[containerId];
+  const start = state.shown;
+  const end = Math.min(start + RENDER_BATCH, state.tracks.length);
+
+  // 既存の「もっと見る」ボタンを削除
+  const oldBtn = listEl.querySelector('.load-more-btn');
+  if (oldBtn) oldBtn.remove();
+
+  for (let i = start; i < end; i++) {
+    const track = state.tracks[i];
+    const item = document.createElement('div');
+    item.className = 'drive-track-item';
+    item.id = 'dt-' + track.id;
+    if (isDriveTrack && currentDriveTrack && currentDriveTrack.id === track.id) item.classList.add('playing');
+    item.innerHTML = `<span class="drive-track-num">${i+1}</span><span class="drive-track-name">${track.name}</span><span class="drive-track-status" id="dts-${track.id}"></span>`;
+    item.onclick = () => playDriveTrack(track, type);
     listEl.appendChild(item);
-  });
+  }
+  state.shown = end;
+
+  // まだ残りがあれば「もっと見る」ボタンを表示
+  if (end < state.tracks.length) {
+    const btn = document.createElement('div');
+    btn.className = 'load-more-btn';
+    btn.style.cssText = 'text-align:center;padding:10px;font-size:0.64rem;color:var(--accent);cursor:pointer;';
+    btn.textContent = `さらに表示（残り${state.tracks.length - end}曲）`;
+    btn.onclick = () => renderDriveList(containerId, state.tracks, type, true);
+    listEl.appendChild(btn);
+  }
 }
 
 async function playDriveTrack(track,type){
@@ -1178,7 +1204,14 @@ async function playDriveTrack(track,type){
         ?`https://www.googleapis.com/drive/v3/files/${track.id}?alt=media&supportsAllDrives=true&acknowledgeAbuse=true`
         :`https://www.googleapis.com/drive/v3/files/${track.id}?alt=media&key=${DRIVE_CONFIG.API_KEY}`;
       const headers=isPersonal?{'Authorization':'Bearer '+googleAccessToken}:{};
-      const res=await fetch(url,{headers, mode:'cors', cache:'force-cache'});
+      let res;
+      try {
+        res = await fetch(url, {headers, mode:'cors'});
+      } catch(fetchErr) {
+        // 失敗時は1回リトライ
+        await new Promise(r => setTimeout(r, 1000));
+        res = await fetch(url, {headers, mode:'cors'});
+      }
       if(!res.ok)throw new Error('取得失敗 '+res.status);
       const blob=await res.blob();
       blobUrl=URL.createObjectURL(blob);
