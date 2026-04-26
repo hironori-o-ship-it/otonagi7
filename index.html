@@ -662,6 +662,25 @@ let googleUserEmail='';
 let currentBgmTab='local';
 const driveCache={};
 
+// ===== シャッフルキュー =====
+let shuffleQueue = [];
+let shuffleQueueIndex = 0;
+
+function buildShuffleQueue(lib) {
+  shuffleQueue = shuffleArray([...lib]);
+  shuffleQueueIndex = 0;
+}
+
+function getNextFromQueue(lib) {
+  if (shuffleQueue.length === 0 || shuffleQueueIndex >= shuffleQueue.length) {
+    shuffleQueue = shuffleArray([...lib]);
+    shuffleQueueIndex = 0;
+  }
+  const track = shuffleQueue[shuffleQueueIndex];
+  shuffleQueueIndex++;
+  return track;
+}
+
 // ===== BG IMAGES =====
 const MAX_BG=4;
 let bgImages=[];
@@ -777,15 +796,15 @@ mp3Player.addEventListener('ended',()=>{
     const lib=currentBgmTab==='personal'?personalTracks:sharedTracks;
     if(lib.length===0){mp3Player.currentTime=0;mp3Player.play();return;}
     if(playMode==='select'){mp3Player.currentTime=0;mp3Player.play();}
-    else{
+    else if(playMode==='random'){
+      if(lib.length===1){mp3Player.currentTime=0;mp3Player.play();return;}
+      if(shuffleQueue.length===0)buildShuffleQueue(lib);
+      const nextTrack=getNextFromQueue(lib);
+      playDriveTrack(nextTrack,currentBgmTab);
+      cycleBg();
+    }else{
       const idx=lib.findIndex(t=>t.id===currentDriveTrack.id);
-      let nextIdx;
-      if(playMode==='random'){
-        if(lib.length===1){mp3Player.currentTime=0;mp3Player.play();return;}
-        do{nextIdx=Math.floor(Math.random()*lib.length);}while(nextIdx===idx);
-      }else{
-        nextIdx=(idx+1)%lib.length;
-      }
+      const nextIdx=(idx+1)%lib.length;
       playDriveTrack(lib[nextIdx],currentBgmTab);
       cycleBg();
     }
@@ -1021,6 +1040,7 @@ async function loadSharedTracks(){
     }while(pageToken);
 
     sharedTracks=shuffleArray(allFiles.map(f=>({id:f.id,name:f.name.replace(/\.[^.]+$/,'')})));
+    buildShuffleQueue(sharedTracks);
     sharedTracksLoaded=true;
     msgEl.style.display='none';
     renderDriveList('sharedTrackList',sharedTracks,'shared');
