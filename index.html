@@ -480,6 +480,7 @@ BGM <span class="arr">▾</span>
 <button class="pill active" id="modeSelect" onclick="setPlayMode('select')">選択</button>
 <button class="pill" id="modeSequential" onclick="setPlayMode('sequential')">順次</button>
 <button class="pill" id="modeRandom" onclick="setPlayMode('random')">ランダム</button>
+<button class="pill" id="modeShuffleNow" onclick="manualShuffle()" title="今すぐシャッフル">⇄</button>
 </div>
 
 <!-- タブ -->
@@ -1492,6 +1493,23 @@ function setPlayMode(mode){
     document.getElementById('mode'+m.charAt(0).toUpperCase()+m.slice(1)).classList.toggle('active',m===mode);
   });
   try{localStorage.setItem(STORAGE_KEY+'playMode',mode);}catch(e){}
+}
+
+function manualShuffle(){
+  const lib = currentBgmTab==='personal' ? personalTracks : sharedTracks;
+  if(lib.length === 0) return;
+  // キューを再構築してシャッフル
+  buildShuffleQueue(lib);
+  // ボタンを一瞬光らせてフィードバック
+  const btn = document.getElementById('modeShuffleNow');
+  btn.style.background = 'linear-gradient(145deg,rgba(212,165,116,0.35),rgba(212,165,116,0.15))';
+  btn.style.borderColor = 'rgba(212,165,116,0.50)';
+  btn.style.color = 'var(--accent)';
+  setTimeout(() => {
+    btn.style.background = '';
+    btn.style.borderColor = '';
+    btn.style.color = '';
+  }, 800);
 }
 
 function getNextTrack(){
