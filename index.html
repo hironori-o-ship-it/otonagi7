@@ -1356,7 +1356,9 @@ function toggleTimerOff(){
 }
 
 function completeSession(){
-  clearInterval(timerInterval);isTimerRunning=false;stopMusic();playNotif();speakPomodoroMessage();
+  clearInterval(timerInterval);isTimerRunning=false;stopMusic();playNotif();
+  // 作業セッション終了時のみメッセージ再生（休憩終了時は再生しない）
+  if(currentMode==='work')speakPomodoroMessage();
   cycleBg();
   if(currentMode==='work'){
     totalWorkMinutes+=+document.getElementById('workDuration').value;
