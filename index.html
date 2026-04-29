@@ -1519,20 +1519,27 @@ function setPlayMode(mode){
 function manualShuffle(){
   const lib = currentBgmTab==='personal' ? personalTracks : sharedTracks;
   if(lib.length === 0) return;
-  // 順番をシャッフルしてキュー再構築
+
+  // 全曲の順番をシャッフル
+  const shuffled = shuffleArray([...lib]);
   if(currentBgmTab==='personal'){
-    personalTracks = shuffleArray([...lib]);
+    personalTracks = shuffled;
   } else {
-    sharedTracks = shuffleArray([...lib]);
+    sharedTracks = shuffled;
   }
-  const newLib = currentBgmTab==='personal' ? personalTracks : sharedTracks;
-  buildShuffleQueue(newLib);
-  // 即座に次の曲を再生
+  buildShuffleQueue(shuffled);
+
+  // 再生中なら即座に1曲目から再生開始
   if(isDriveTrack && isPlaying){
-    const nextTrack = newLib[0];
-    playDriveTrack(nextTrack, currentBgmTab);
+    playDriveTrack(shuffled[0], currentBgmTab);
     cycleBg();
   }
+
+  // ボタンを一瞬光らせてフィードバック
+  const btn = document.getElementById('modeShuffleNow');
+  btn.style.background = 'linear-gradient(145deg,rgba(212,165,116,0.35),rgba(212,165,116,0.15))';
+  btn.style.color = 'var(--accent)';
+  setTimeout(() => { btn.style.background=''; btn.style.color=''; }, 600);
 }
 
 function getNextTrack(){
