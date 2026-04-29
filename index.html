@@ -395,6 +395,8 @@ border:1px solid rgba(255,255,255,0.05);}
 .clear-btn:hover{background:rgba(212,137,106,0.12)}
 .viz{display:flex;justify-content:center;align-items:flex-end;gap:2px;height:20px;margin-top:6px}
 .viz .vb{width:2.5px;border-radius:2px;transition:height 0.15s;opacity:0.4;background:var(--accent)}
+@keyframes shuffleBlink{0%,100%{background:linear-gradient(145deg,rgba(212,165,116,0.35),rgba(212,165,116,0.15));border-color:rgba(212,165,116,0.50);color:var(--accent);}50%{background:rgba(255,255,255,0.04);border-color:rgba(255,255,255,0.06);color:var(--text-dim);}}
+.shuffle-blinking{animation:shuffleBlink 0.8s ease-in-out infinite !important;}
 /* ===== STATS ===== */
 .stats-panel{padding:18px 20px;margin-bottom:16px}
 .stats-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;text-align:center}
@@ -1535,23 +1537,14 @@ function manualShuffle(){
 
 function startShuffleBlink(){
   const btn = document.getElementById('modeShuffleNow');
-  let on = true;
   if(btn._blinkTimer) clearInterval(btn._blinkTimer);
+  btn.classList.add('shuffle-blinking');
   btn._blinkTimer = setInterval(() => {
-    if(!shufflePending){ 
+    if(!shufflePending){
       clearInterval(btn._blinkTimer);
-      btn.style.background = '';
-      btn.style.borderColor = '';
-      btn.style.color = '';
-      return;
+      btn.classList.remove('shuffle-blinking');
     }
-    on = !on;
-    btn.style.background = on 
-      ? 'linear-gradient(145deg,rgba(212,165,116,0.35),rgba(212,165,116,0.15))' 
-      : '';
-    btn.style.borderColor = on ? 'rgba(212,165,116,0.50)' : '';
-    btn.style.color = on ? 'var(--accent)' : '';
-  }, 400);
+  }, 200);
 }
 
 function getNextTrack(){
