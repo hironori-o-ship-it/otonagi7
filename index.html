@@ -1446,26 +1446,50 @@ const POMODORO_MESSAGES = [
   'よくやりました。焦らず、自分のペースで進みましょう。',
 ];
 
-function speakPomodoroMessage() {
+function getBestJapaneseVoice() {
+  const voices = window.speechSynthesis.getVoices();
+  // Google日本語女性音声を優先
+  const preferred = [
+    'Google 日本語', 'Google Japanese', 'Microsoft Haruka', 'Kyoko', 'O-ren'
+  ];
+  for (const name of preferred) {
+    const v = voices.find(v => v.name.includes(name) && v.lang.startsWith('ja'));
+    if (v) return v;
+  }
+  // 見つからなければ日本語音声を返す
+  return voices.find(v => v.lang.startsWith('ja')) || null;
+}
+
+function speakText(msg, onEnd) {
   if (!('speechSynthesis' in window)) return;
-  const msg = POMODORO_MESSAGES[Math.floor(Math.random() * POMODORO_MESSAGES.length)];
-  // iOSはspeechSynthesisがキューに詰まることがあるのでキャンセルしてから実行
   window.speechSynthesis.cancel();
-  setTimeout(() => {
+  const doSpeak = () => {
     const utter = new SpeechSynthesisUtterance(msg);
     utter.lang = 'ja-JP';
-    utter.rate = 0.85;
-    utter.pitch = 1.0;
+    utter.rate = 1.0;
+    utter.pitch = 1.05;
     utter.volume = 1.0;
-    // iOSのバグ対策：長い読み上げが途中で止まる問題を防ぐ
+    const voice = getBestJapaneseVoice();
+    if (voice) utter.voice = voice;
     const resumeTimer = setInterval(() => {
       if (!window.speechSynthesis.speaking) { clearInterval(resumeTimer); return; }
       window.speechSynthesis.pause();
       window.speechSynthesis.resume();
     }, 5000);
-    utter.onend = () => clearInterval(resumeTimer);
+    utter.onend = () => { clearInterval(resumeTimer); if(onEnd) onEnd(); };
     window.speechSynthesis.speak(utter);
-  }, 2500);
+  };
+  // 音声リストが未ロードの場合に備えて待つ
+  if (window.speechSynthesis.getVoices().length > 0) {
+    doSpeak();
+  } else {
+    window.speechSynthesis.onvoiceschanged = () => { doSpeak(); };
+  }
+}
+
+function speakPomodoroMessage() {
+  const msg = POMODORO_MESSAGES[Math.floor(Math.random() * POMODORO_MESSAGES.length)];
+  setTimeout(() => speakText(msg), 2500);
 }
 
 // ===== NHK CHIME =====
@@ -1671,18 +1695,10 @@ function playAnnouncement(msg) {
     offset += s.dur + s.gap;
   });
 
-  // 音終了後にBGM音量を戻す
+  // 音終了後にBGM音量を戻して読み上げ
   setTimeout(() => {
     mp3Player.volume = originalVolume;
-    // 読み上げ（Androidのみ動作する可能性あり）
-    if ('speechSynthesis' in window) {
-      window.speechSynthesis.cancel();
-      const utter = new SpeechSynthesisUtterance(msg);
-      utter.lang = 'ja-JP';
-      utter.rate = 0.85;
-      utter.volume = 1.0;
-      window.speechSynthesis.speak(utter);
-    }
+    speakText(msg);
   }, offset * 1000 + 200);
 }
 
