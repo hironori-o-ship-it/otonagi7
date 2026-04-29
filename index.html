@@ -795,7 +795,7 @@ mp3Player.volume=volume;
 mp3Player.addEventListener('ended',()=>{
   if(!isPlaying)return;
   if(isDriveTrack){
-    const lib=currentBgmTab==='personal'?personalTracks:sharedTracks;
+    const lib=currentBgmTab==='personal'?[...personalTracks]:[...sharedTracks];
     if(lib.length===0){mp3Player.currentTime=0;mp3Player.play();return;}
     if(playMode==='select'){mp3Player.currentTime=0;mp3Player.play();}
     else if(playMode==='random'){
