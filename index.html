@@ -1529,6 +1529,10 @@ function manualShuffle(){
   }
   buildShuffleQueue(shuffled);
 
+  // リストを再描画して順番を反映
+  const containerId = currentBgmTab==='personal' ? 'personalTrackList' : 'sharedTrackList';
+  renderDriveList(containerId, shuffled, currentBgmTab);
+
   // 再生中なら即座に1曲目から再生開始
   if(isDriveTrack && isPlaying){
     playDriveTrack(shuffled[0], currentBgmTab);
