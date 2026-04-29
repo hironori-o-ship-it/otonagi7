@@ -1536,16 +1536,17 @@ function manualShuffle(){
   if(currentBgmTab==='local'){
     const avail=[];for(let i=0;i<MAX_TRACKS;i++){if(tracks[i])avail.push(i);}
     if(avail.length===0)return;
-    // ローカルのスロットをシャッフルして選択
+    // ローカルのスロットをシャッフルして選択（再生中かどうかに関係なく切り替え）
     const shuffledIdx = shuffleArray(avail);
-    selectedTrack = shuffledIdx[0];
+    // 現在と違う曲を選ぶ
+    const newIdx = shuffledIdx[0] === selectedTrack && shuffledIdx.length > 1 ? shuffledIdx[1] : shuffledIdx[0];
+    selectedTrack = newIdx;
     highlightTrack();
-    if(isPlaying){
-      mp3Player.src=tracks[shuffledIdx[0]].data;
-      mp3Player.volume=volume;mp3Player.loop=false;
-      mp3Player.play().catch(()=>{});
-      updateNowPlaying();
-    }
+    mp3Player.src=tracks[newIdx].data;
+    mp3Player.volume=volume;mp3Player.loop=false;
+    mp3Player.play().catch(()=>{});
+    isPlaying=true;
+    updateNowPlaying();
     const btn = document.getElementById('modeShuffleNow');
     btn.style.background = 'linear-gradient(145deg,rgba(212,165,116,0.35),rgba(212,165,116,0.15))';
     btn.style.color = 'var(--accent)';
