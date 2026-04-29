@@ -395,8 +395,7 @@ border:1px solid rgba(255,255,255,0.05);}
 .clear-btn:hover{background:rgba(212,137,106,0.12)}
 .viz{display:flex;justify-content:center;align-items:flex-end;gap:2px;height:20px;margin-top:6px}
 .viz .vb{width:2.5px;border-radius:2px;transition:height 0.15s;opacity:0.4;background:var(--accent)}
-@keyframes shuffleBlink{0%,100%{background:linear-gradient(145deg,rgba(212,165,116,0.35),rgba(212,165,116,0.15));border-color:rgba(212,165,116,0.50);color:var(--accent);}50%{background:rgba(255,255,255,0.04);border-color:rgba(255,255,255,0.06);color:var(--text-dim);}}
-.shuffle-blinking{animation:shuffleBlink 0.8s ease-in-out infinite !important;}
+
 /* ===== STATS ===== */
 .stats-panel{padding:18px 20px;margin-bottom:16px}
 .stats-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;text-align:center}
@@ -807,7 +806,6 @@ mp3Player.addEventListener('ended',()=>{
       playDriveTrack(nextTrack,currentBgmTab);
       cycleBg();
     }else{
-      shufflePending = false;
       const idx=lib.findIndex(t=>t.id===currentDriveTrack.id);
       const nextIdx=(idx+1)%lib.length;
       playDriveTrack(lib[nextIdx],currentBgmTab);
@@ -1518,33 +1516,23 @@ function setPlayMode(mode){
   try{localStorage.setItem(STORAGE_KEY+'playMode',mode);}catch(e){}
 }
 
-let shufflePending = false;
-
 function manualShuffle(){
   const lib = currentBgmTab==='personal' ? personalTracks : sharedTracks;
   if(lib.length === 0) return;
-  // モードは変えずに順番だけシャッフル
+  // 順番をシャッフルしてキュー再構築
   if(currentBgmTab==='personal'){
     personalTracks = shuffleArray([...lib]);
   } else {
     sharedTracks = shuffleArray([...lib]);
   }
-  // シャッフルキューも再構築
-  buildShuffleQueue(currentBgmTab==='personal' ? personalTracks : sharedTracks);
-  shufflePending = true;
-  startShuffleBlink();
-}
-
-function startShuffleBlink(){
-  const btn = document.getElementById('modeShuffleNow');
-  if(btn._blinkTimer) clearInterval(btn._blinkTimer);
-  btn.classList.add('shuffle-blinking');
-  btn._blinkTimer = setInterval(() => {
-    if(!shufflePending){
-      clearInterval(btn._blinkTimer);
-      btn.classList.remove('shuffle-blinking');
-    }
-  }, 200);
+  const newLib = currentBgmTab==='personal' ? personalTracks : sharedTracks;
+  buildShuffleQueue(newLib);
+  // 即座に次の曲を再生
+  if(isDriveTrack && isPlaying){
+    const nextTrack = newLib[0];
+    playDriveTrack(nextTrack, currentBgmTab);
+    cycleBg();
+  }
 }
 
 function getNextTrack(){
