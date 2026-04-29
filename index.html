@@ -1434,62 +1434,38 @@ function updateDurations(){
 
 // ===== ポモドーロ終了メッセージ =====
 const POMODORO_MESSAGES = [
-  'よくがんばりました。少し深呼吸してみましょう。',
-  'お疲れ様です。肩の力を抜いて、ゆっくり休んでください。',
-  'ちょっと一息。窓の外を眺めてみましょう。',
-  '集中お疲れ様でした。温かい飲み物はいかがですか。',
-  '休憩は次の集中のための投資です。しっかり休みましょう。',
-  'よく集中できました。目を閉じて、少し休んでください。',
-  '素晴らしい集中力でした。軽くストレッチしてみましょう。',
-  'お疲れ様でした。水を一杯飲んで、リフレッシュしましょう。',
-  '休憩時間です。スマホを置いて、ゆったり過ごしましょう。',
-  'よくやりました。焦らず、自分のペースで進みましょう。',
+  'ちょっと休憩しましょう。',
+  '少し一息いれましょう。',
+  '目を閉じて、休みましょう。',
+  '温かい飲み物はいかがですか。',
+  '軽くストレッチしましょう。',
+  '水を一杯飲みましょう。',
+  '窓の外を眺めましょう。',
+  '深呼吸してみましょう。',
+  'ゆっくり休んでください。',
+  '少し体を動かしましょう。',
 ];
 
-function getBestJapaneseVoice() {
-  const voices = window.speechSynthesis.getVoices();
-  // Google日本語女性音声を優先
-  const preferred = [
-    'Google 日本語', 'Google Japanese', 'Microsoft Haruka', 'Kyoko', 'O-ren'
-  ];
-  for (const name of preferred) {
-    const v = voices.find(v => v.name.includes(name) && v.lang.startsWith('ja'));
-    if (v) return v;
-  }
-  // 見つからなければ日本語音声を返す
-  return voices.find(v => v.lang.startsWith('ja')) || null;
-}
-
-function speakText(msg, onEnd) {
+function speakPomodoroMessage() {
   if (!('speechSynthesis' in window)) return;
+  const msg = POMODORO_MESSAGES[Math.floor(Math.random() * POMODORO_MESSAGES.length)];
+  // iOSはspeechSynthesisがキューに詰まることがあるのでキャンセルしてから実行
   window.speechSynthesis.cancel();
-  const doSpeak = () => {
+  setTimeout(() => {
     const utter = new SpeechSynthesisUtterance(msg);
     utter.lang = 'ja-JP';
-    utter.rate = 1.0;
-    utter.pitch = 1.05;
+    utter.rate = 0.85;
+    utter.pitch = 1.0;
     utter.volume = 1.0;
-    const voice = getBestJapaneseVoice();
-    if (voice) utter.voice = voice;
+    // iOSのバグ対策：長い読み上げが途中で止まる問題を防ぐ
     const resumeTimer = setInterval(() => {
       if (!window.speechSynthesis.speaking) { clearInterval(resumeTimer); return; }
       window.speechSynthesis.pause();
       window.speechSynthesis.resume();
     }, 5000);
-    utter.onend = () => { clearInterval(resumeTimer); if(onEnd) onEnd(); };
+    utter.onend = () => clearInterval(resumeTimer);
     window.speechSynthesis.speak(utter);
-  };
-  // 音声リストが未ロードの場合に備えて待つ
-  if (window.speechSynthesis.getVoices().length > 0) {
-    doSpeak();
-  } else {
-    window.speechSynthesis.onvoiceschanged = () => { doSpeak(); };
-  }
-}
-
-function speakPomodoroMessage() {
-  const msg = POMODORO_MESSAGES[Math.floor(Math.random() * POMODORO_MESSAGES.length)];
-  setTimeout(() => speakText(msg), 2500);
+  }, 2500);
 }
 
 // ===== NHK CHIME =====
@@ -1695,10 +1671,18 @@ function playAnnouncement(msg) {
     offset += s.dur + s.gap;
   });
 
-  // 音終了後にBGM音量を戻して読み上げ
+  // 音終了後にBGM音量を戻す
   setTimeout(() => {
     mp3Player.volume = originalVolume;
-    speakText(msg);
+    // 読み上げ（Androidのみ動作する可能性あり）
+    if ('speechSynthesis' in window) {
+      window.speechSynthesis.cancel();
+      const utter = new SpeechSynthesisUtterance(msg);
+      utter.lang = 'ja-JP';
+      utter.rate = 0.85;
+      utter.volume = 1.0;
+      window.speechSynthesis.speak(utter);
+    }
   }, offset * 1000 + 200);
 }
 
