@@ -1275,15 +1275,17 @@ function startTimer(){
   if(isDriveTrack && currentDriveTrack){
     // Drive曲が再生中→再開
     isPlaying=true;mp3Player.play().catch(()=>{});updateViz();
-  } else if(currentBgmTab==='shared' || currentBgmTab==='personal'){
-    // 標準曲/マイ曲タブの場合→1曲目から自動再生
-    const lib = currentBgmTab==='personal' ? personalTracks : sharedTracks;
-    if(lib.length > 0){
-      playDriveTrack(lib[0], currentBgmTab);
-    }
   } else {
-    // ローカルタブ
-    startMusic();
+    // ローカルに曲があればローカル再生、なければ標準曲1曲目から自動再生
+    const hasLocal = tracks.some(t=>t!==null);
+    if(hasLocal){
+      startMusic();
+    } else {
+      const lib = currentBgmTab==='personal' ? personalTracks : sharedTracks;
+      if(lib.length > 0){
+        playDriveTrack(lib[0], currentBgmTab==='personal'?'personal':'shared');
+      }
+    }
   }
   timerInterval=setInterval(()=>{timeRemaining--;if(timeRemaining<=0){completeSession();return;}updateTimerDisplay();updateProgress();},1000);
 }
