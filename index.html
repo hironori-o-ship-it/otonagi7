@@ -480,7 +480,6 @@ BGM <span class="arr">▾</span>
 <button class="pill active" id="modeSelect" onclick="setPlayMode('select')">選択</button>
 <button class="pill" id="modeSequential" onclick="setPlayMode('sequential')">順次</button>
 <button class="pill" id="modeRandom" onclick="setPlayMode('random')">ランダム</button>
-<button class="pill" id="modeShuffleNow" onclick="manualShuffle()" title="今すぐシャッフル">⇄</button>
 </div>
 
 <!-- タブ -->
@@ -1435,30 +1434,39 @@ function updateDurations(){
 
 // ===== ポモドーロ終了メッセージ =====
 const POMODORO_MESSAGES = [
-  'ちょっと休憩しましょう。',
-  '少し一息いれましょう。',
-  '目を閉じて、休みましょう。',
-  '温かい飲み物はいかがですか。',
-  '軽くストレッチしましょう。',
-  '水を一杯飲みましょう。',
-  '窓の外を眺めましょう。',
-  '深呼吸してみましょう。',
-  'ゆっくり休んでください。',
-  '少し体を動かしましょう。',
+  'お疲れ様です。ちょっと休憩しましょう。',
+  'お疲れ様です。少し一息いれましょう。',
+  'お疲れ様です。目を閉じて休みましょう。',
+  'お疲れ様です。温かい飲み物はいかがですか。',
+  'お疲れ様です。軽くストレッチしましょう。',
+  'お疲れ様です。水を一杯飲みましょう。',
+  'お疲れ様です。窓の外を眺めましょう。',
+  'お疲れ様です。深呼吸してみましょう。',
+  'お疲れ様です。ゆっくり休んでください。',
+  'お疲れ様です。少し体を動かしましょう。',
 ];
 
-function speakPomodoroMessage() {
+function getBestJapaneseVoice() {
+  const voices = window.speechSynthesis.getVoices();
+  const preferred = ['Kyoko', 'O-ren', 'Google 日本語', 'Google Japanese', 'Microsoft Haruka'];
+  for (const name of preferred) {
+    const v = voices.find(v => v.name.includes(name));
+    if (v) return v;
+  }
+  return voices.find(v => v.lang && v.lang.startsWith('ja')) || null;
+}
+
+function speakText(msg) {
   if (!('speechSynthesis' in window)) return;
-  const msg = POMODORO_MESSAGES[Math.floor(Math.random() * POMODORO_MESSAGES.length)];
-  // iOSはspeechSynthesisがキューに詰まることがあるのでキャンセルしてから実行
   window.speechSynthesis.cancel();
-  setTimeout(() => {
+  const doSpeak = () => {
     const utter = new SpeechSynthesisUtterance(msg);
     utter.lang = 'ja-JP';
-    utter.rate = 0.85;
+    utter.rate = 0.95;
     utter.pitch = 1.0;
     utter.volume = 1.0;
-    // iOSのバグ対策：長い読み上げが途中で止まる問題を防ぐ
+    const voice = getBestJapaneseVoice();
+    if (voice) utter.voice = voice;
     const resumeTimer = setInterval(() => {
       if (!window.speechSynthesis.speaking) { clearInterval(resumeTimer); return; }
       window.speechSynthesis.pause();
@@ -1466,7 +1474,17 @@ function speakPomodoroMessage() {
     }, 5000);
     utter.onend = () => clearInterval(resumeTimer);
     window.speechSynthesis.speak(utter);
-  }, 2500);
+  };
+  if (window.speechSynthesis.getVoices().length > 0) {
+    doSpeak();
+  } else {
+    window.speechSynthesis.onvoiceschanged = doSpeak;
+  }
+}
+
+function speakPomodoroMessage() {
+  const msg = POMODORO_MESSAGES[Math.floor(Math.random() * POMODORO_MESSAGES.length)];
+  setTimeout(() => speakText(msg), 2500);
 }
 
 // ===== NHK CHIME =====
@@ -1493,23 +1511,6 @@ function setPlayMode(mode){
     document.getElementById('mode'+m.charAt(0).toUpperCase()+m.slice(1)).classList.toggle('active',m===mode);
   });
   try{localStorage.setItem(STORAGE_KEY+'playMode',mode);}catch(e){}
-}
-
-function manualShuffle(){
-  const lib = currentBgmTab==='personal' ? personalTracks : sharedTracks;
-  if(lib.length === 0) return;
-  // キューを再構築してシャッフル
-  buildShuffleQueue(lib);
-  // ボタンを一瞬光らせてフィードバック
-  const btn = document.getElementById('modeShuffleNow');
-  btn.style.background = 'linear-gradient(145deg,rgba(212,165,116,0.35),rgba(212,165,116,0.15))';
-  btn.style.borderColor = 'rgba(212,165,116,0.50)';
-  btn.style.color = 'var(--accent)';
-  setTimeout(() => {
-    btn.style.background = '';
-    btn.style.borderColor = '';
-    btn.style.color = '';
-  }, 800);
 }
 
 function getNextTrack(){
@@ -1692,15 +1693,7 @@ function playAnnouncement(msg) {
   // 音終了後にBGM音量を戻す
   setTimeout(() => {
     mp3Player.volume = originalVolume;
-    // 読み上げ（Androidのみ動作する可能性あり）
-    if ('speechSynthesis' in window) {
-      window.speechSynthesis.cancel();
-      const utter = new SpeechSynthesisUtterance(msg);
-      utter.lang = 'ja-JP';
-      utter.rate = 0.85;
-      utter.volume = 1.0;
-      window.speechSynthesis.speak(utter);
-    }
+    speakText(msg);
   }, offset * 1000 + 200);
 }
 
