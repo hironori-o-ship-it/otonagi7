@@ -1271,8 +1271,18 @@ function startTimer(){
   initAudio();isTimerRunning=true;
   document.getElementById('startBtn').textContent='一時停止';
   document.getElementById('timerLabel').textContent=currentMode==='work'?'集中':'ブレイク';
-  if(!isDriveTrack)startMusic();
-  else{isPlaying=true;mp3Player.play().catch(()=>{});updateViz();}
+  if(!isDriveTrack){
+    startMusic();
+  } else if(isDriveTrack && currentDriveTrack){
+    // 既に曲が選ばれていれば再開
+    isPlaying=true;mp3Player.play().catch(()=>{});updateViz();
+  } else {
+    // Drive曲が未選択の場合は1曲目から自動再生
+    const lib = currentBgmTab==='personal' ? personalTracks : sharedTracks;
+    if(lib.length > 0){
+      playDriveTrack(lib[0], currentBgmTab);
+    }
+  }
   timerInterval=setInterval(()=>{timeRemaining--;if(timeRemaining<=0){completeSession();return;}updateTimerDisplay();updateProgress();},1000);
 }
 
