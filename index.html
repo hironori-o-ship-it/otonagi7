@@ -1532,6 +1532,27 @@ function setPlayMode(mode){
 }
 
 function manualShuffle(){
+  // ローカルタブの場合
+  if(currentBgmTab==='local'){
+    const avail=[];for(let i=0;i<MAX_TRACKS;i++){if(tracks[i])avail.push(i);}
+    if(avail.length===0)return;
+    // ローカルのスロットをシャッフルして選択
+    const shuffledIdx = shuffleArray(avail);
+    selectedTrack = shuffledIdx[0];
+    highlightTrack();
+    if(isPlaying){
+      mp3Player.src=tracks[shuffledIdx[0]].data;
+      mp3Player.volume=volume;mp3Player.loop=false;
+      mp3Player.play().catch(()=>{});
+      updateNowPlaying();
+    }
+    const btn = document.getElementById('modeShuffleNow');
+    btn.style.background = 'linear-gradient(145deg,rgba(212,165,116,0.35),rgba(212,165,116,0.15))';
+    btn.style.color = 'var(--accent)';
+    setTimeout(() => { btn.style.background=''; btn.style.color=''; }, 600);
+    return;
+  }
+
   const lib = currentBgmTab==='personal' ? personalTracks : sharedTracks;
   if(lib.length === 0) return;
 
