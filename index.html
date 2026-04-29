@@ -801,9 +801,11 @@ mp3Player.addEventListener('ended',()=>{
       if(lib.length===1){mp3Player.currentTime=0;mp3Player.play();return;}
       if(shuffleQueue.length===0)buildShuffleQueue(lib);
       const nextTrack=getNextFromQueue(lib);
+      shufflePending = false;
       playDriveTrack(nextTrack,currentBgmTab);
       cycleBg();
     }else{
+      shufflePending = false;
       const idx=lib.findIndex(t=>t.id===currentDriveTrack.id);
       const nextIdx=(idx+1)%lib.length;
       playDriveTrack(lib[nextIdx],currentBgmTab);
@@ -1514,19 +1516,42 @@ function setPlayMode(mode){
   try{localStorage.setItem(STORAGE_KEY+'playMode',mode);}catch(e){}
 }
 
+let shufflePending = false;
+
 function manualShuffle(){
   const lib = currentBgmTab==='personal' ? personalTracks : sharedTracks;
   if(lib.length === 0) return;
-  buildShuffleQueue(lib);
+  // モードは変えずに順番だけシャッフル
+  if(currentBgmTab==='personal'){
+    personalTracks = shuffleArray([...lib]);
+  } else {
+    sharedTracks = shuffleArray([...lib]);
+  }
+  // シャッフルキューも再構築
+  buildShuffleQueue(currentBgmTab==='personal' ? personalTracks : sharedTracks);
+  shufflePending = true;
+  startShuffleBlink();
+}
+
+function startShuffleBlink(){
   const btn = document.getElementById('modeShuffleNow');
-  btn.style.background = 'linear-gradient(145deg,rgba(212,165,116,0.35),rgba(212,165,116,0.15))';
-  btn.style.borderColor = 'rgba(212,165,116,0.50)';
-  btn.style.color = 'var(--accent)';
-  setTimeout(() => {
-    btn.style.background = '';
-    btn.style.borderColor = '';
-    btn.style.color = '';
-  }, 800);
+  let on = true;
+  if(btn._blinkTimer) clearInterval(btn._blinkTimer);
+  btn._blinkTimer = setInterval(() => {
+    if(!shufflePending){ 
+      clearInterval(btn._blinkTimer);
+      btn.style.background = '';
+      btn.style.borderColor = '';
+      btn.style.color = '';
+      return;
+    }
+    on = !on;
+    btn.style.background = on 
+      ? 'linear-gradient(145deg,rgba(212,165,116,0.35),rgba(212,165,116,0.15))' 
+      : '';
+    btn.style.borderColor = on ? 'rgba(212,165,116,0.50)' : '';
+    btn.style.color = on ? 'var(--accent)' : '';
+  }, 400);
 }
 
 function getNextTrack(){
