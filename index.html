@@ -610,18 +610,67 @@ Googleでログイン
   <input type="text" id="cdMsg15" placeholder="終了メッセージ（例：休憩にしましょう）" style="width:100%;padding:5px 10px;border-radius:10px;border:1px solid var(--glass-border);background:rgba(255,255,255,0.04);color:var(--text);font-family:inherit;font-size:0.64rem;">
   <div style="font-size:0.56rem;color:var(--text-dim);margin-top:4px;opacity:0.7;">※ 省略時は「タイマーが終了しました」と読み上げます</div>
 </div>
-<div style="margin-bottom:10px;">
-  <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:5px;">
-    <label style="font-size:0.72rem;color:var(--text-mid);">自由設定</label>
+<!-- 自由設定タイマー1（常時表示） -->
+<div id="cdCustomBlock1" style="margin-bottom:8px;">
+  <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:4px;">
+    <label style="font-size:0.68rem;color:var(--text-mid);">自由設定①</label>
     <div style="display:flex;gap:6px;align-items:center;">
-      <input type="number" id="cdCustomMin" value="20" min="1" max="180" style="width:55px;padding:5px 6px;border-radius:10px;border:1px solid var(--glass-border);background:rgba(255,255,255,0.04);color:var(--text);font-family:inherit;font-size:0.78rem;text-align:center;">
+      <input type="number" id="cdCustomMin1" value="20" min="1" max="180" style="width:55px;padding:5px 6px;border-radius:10px;border:1px solid var(--glass-border);background:rgba(255,255,255,0.04);color:var(--text);font-family:inherit;font-size:0.78rem;text-align:center;">
       <span style="font-size:0.64rem;color:var(--text-dim);">分</span>
-      <button class="g-btn btn-sub" id="cdTimerCustomBtn" onclick="startCountdownCustom()" style="font-size:0.62rem;padding:5px 16px;width:auto;">スタート</button>
+      <button class="g-btn btn-sub" onclick="startCountdownCustomN(1)" style="font-size:0.62rem;padding:5px 14px;width:auto;">スタート</button>
     </div>
   </div>
-  <input type="text" id="cdMsgCustom" placeholder="終了メッセージ（省略可）" style="width:100%;padding:5px 10px;border-radius:10px;border:1px solid var(--glass-border);background:rgba(255,255,255,0.04);color:var(--text);font-family:inherit;font-size:0.64rem;">
-  <div style="font-size:0.56rem;color:var(--text-dim);margin-top:4px;opacity:0.7;">※ 省略時は「タイマーが終了しました」と読み上げます</div>
+  <input type="text" id="cdMsgCustom1" placeholder="終了メッセージ（省略可）" style="width:100%;padding:5px 10px;border-radius:10px;border:1px solid var(--glass-border);background:rgba(255,255,255,0.04);color:var(--text);font-family:inherit;font-size:0.62rem;">
 </div>
+<!-- 自由設定タイマー2〜5（折りたたみ） -->
+<div id="cdExtraTimers" style="display:none;">
+  <div id="cdCustomBlock2" style="margin-bottom:8px;">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:4px;">
+      <label style="font-size:0.68rem;color:var(--text-mid);">自由設定②</label>
+      <div style="display:flex;gap:6px;align-items:center;">
+        <input type="number" id="cdCustomMin2" value="30" min="1" max="180" style="width:55px;padding:5px 6px;border-radius:10px;border:1px solid var(--glass-border);background:rgba(255,255,255,0.04);color:var(--text);font-family:inherit;font-size:0.78rem;text-align:center;">
+        <span style="font-size:0.64rem;color:var(--text-dim);">分</span>
+        <button class="g-btn btn-sub" onclick="startCountdownCustomN(2)" style="font-size:0.62rem;padding:5px 14px;width:auto;">スタート</button>
+      </div>
+    </div>
+    <input type="text" id="cdMsgCustom2" placeholder="終了メッセージ（省略可）" style="width:100%;padding:5px 10px;border-radius:10px;border:1px solid var(--glass-border);background:rgba(255,255,255,0.04);color:var(--text);font-family:inherit;font-size:0.62rem;">
+  </div>
+  <div id="cdCustomBlock3" style="margin-bottom:8px;">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:4px;">
+      <label style="font-size:0.68rem;color:var(--text-mid);">自由設定③</label>
+      <div style="display:flex;gap:6px;align-items:center;">
+        <input type="number" id="cdCustomMin3" value="45" min="1" max="180" style="width:55px;padding:5px 6px;border-radius:10px;border:1px solid var(--glass-border);background:rgba(255,255,255,0.04);color:var(--text);font-family:inherit;font-size:0.78rem;text-align:center;">
+        <span style="font-size:0.64rem;color:var(--text-dim);">分</span>
+        <button class="g-btn btn-sub" onclick="startCountdownCustomN(3)" style="font-size:0.62rem;padding:5px 14px;width:auto;">スタート</button>
+      </div>
+    </div>
+    <input type="text" id="cdMsgCustom3" placeholder="終了メッセージ（省略可）" style="width:100%;padding:5px 10px;border-radius:10px;border:1px solid var(--glass-border);background:rgba(255,255,255,0.04);color:var(--text);font-family:inherit;font-size:0.62rem;">
+  </div>
+  <div id="cdCustomBlock4" style="margin-bottom:8px;">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:4px;">
+      <label style="font-size:0.68rem;color:var(--text-mid);">自由設定④</label>
+      <div style="display:flex;gap:6px;align-items:center;">
+        <input type="number" id="cdCustomMin4" value="60" min="1" max="180" style="width:55px;padding:5px 6px;border-radius:10px;border:1px solid var(--glass-border);background:rgba(255,255,255,0.04);color:var(--text);font-family:inherit;font-size:0.78rem;text-align:center;">
+        <span style="font-size:0.64rem;color:var(--text-dim);">分</span>
+        <button class="g-btn btn-sub" onclick="startCountdownCustomN(4)" style="font-size:0.62rem;padding:5px 14px;width:auto;">スタート</button>
+      </div>
+    </div>
+    <input type="text" id="cdMsgCustom4" placeholder="終了メッセージ（省略可）" style="width:100%;padding:5px 10px;border-radius:10px;border:1px solid var(--glass-border);background:rgba(255,255,255,0.04);color:var(--text);font-family:inherit;font-size:0.62rem;">
+  </div>
+  <div id="cdCustomBlock5" style="margin-bottom:8px;">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:4px;">
+      <label style="font-size:0.68rem;color:var(--text-mid);">自由設定⑤</label>
+      <div style="display:flex;gap:6px;align-items:center;">
+        <input type="number" id="cdCustomMin5" value="90" min="1" max="180" style="width:55px;padding:5px 6px;border-radius:10px;border:1px solid var(--glass-border);background:rgba(255,255,255,0.04);color:var(--text);font-family:inherit;font-size:0.78rem;text-align:center;">
+        <span style="font-size:0.64rem;color:var(--text-dim);">分</span>
+        <button class="g-btn btn-sub" onclick="startCountdownCustomN(5)" style="font-size:0.62rem;padding:5px 14px;width:auto;">スタート</button>
+      </div>
+    </div>
+    <input type="text" id="cdMsgCustom5" placeholder="終了メッセージ（省略可）" style="width:100%;padding:5px 10px;border-radius:10px;border:1px solid var(--glass-border);background:rgba(255,255,255,0.04);color:var(--text);font-family:inherit;font-size:0.62rem;">
+  </div>
+</div>
+<div style="font-size:0.56rem;color:var(--text-dim);margin-top:4px;opacity:0.7;">※ 省略時は「タイマーが終了しました」と読み上げます</div>
+<button onclick="toggleExtraTimers()" id="cdExtraBtn" style="margin-top:6px;padding:4px 12px;border-radius:20px;font-size:0.58rem;border:1px solid rgba(212,165,116,0.25);background:rgba(212,165,116,0.08);color:var(--accent);cursor:pointer;font-family:inherit;">▼ さらに表示</button>
 <div id="cdStatusBar" style="display:none;margin-top:8px;padding:8px 12px;border-radius:10px;background:rgba(0,200,255,0.08);border:1px solid rgba(0,200,255,0.20);font-size:0.66rem;color:rgba(0,220,255,0.9);text-align:center;">
   カウントダウン稼働中
 </div>
@@ -1828,6 +1877,28 @@ function startCountdown(minutes) {
   enterCountdownMode();
 }
 
+function toggleExtraTimers(){
+  const el=document.getElementById('cdExtraTimers');
+  const btn=document.getElementById('cdExtraBtn');
+  const isOpen=el.style.display!=='none';
+  el.style.display=isOpen?'none':'';
+  btn.textContent=isOpen?'▼ さらに表示':'▲ 閉じる';
+}
+
+function startCountdownCustomN(n) {
+  const min = parseInt(document.getElementById('cdCustomMin'+n).value) || 20;
+  const msg = document.getElementById('cdMsgCustom'+n).value.trim();
+  if (cdInterval || cdPaused) stopCountdown();
+  cdIs15min = false;
+  cdAnnouncedThree = false;
+  cdTotal = min * 60;
+  cdRemaining = cdTotal;
+  cdFinishMsg = msg || 'タイマーが終了しました';
+  try{localStorage.setItem(STORAGE_KEY+'cdCustomMin'+n, min);}catch(e){}
+  try{localStorage.setItem(STORAGE_KEY+'cdMsgCustom'+n, msg);}catch(e){}
+  enterCountdownMode();
+}
+
 function startCountdownCustom() {
   const min = parseInt(document.getElementById('cdCustomMin').value) || 20;
   if (cdInterval || cdPaused) stopCountdown();
@@ -2021,10 +2092,13 @@ async function init(){
   try{
     const msg15=localStorage.getItem(STORAGE_KEY+'cdMsg15');
     if(msg15)document.getElementById('cdMsg15').value=msg15;
-    const msgCustom=localStorage.getItem(STORAGE_KEY+'cdMsgCustom');
-    if(msgCustom)document.getElementById('cdMsgCustom').value=msgCustom;
-    const cdMin=localStorage.getItem(STORAGE_KEY+'cdCustomMin');
-    if(cdMin)document.getElementById('cdCustomMin').value=cdMin;
+    // 自由設定タイマー1〜5の復元
+    for(let i=1;i<=5;i++){
+      const m=localStorage.getItem(STORAGE_KEY+'cdCustomMin'+i);
+      const msg=localStorage.getItem(STORAGE_KEY+'cdMsgCustom'+i);
+      if(m&&document.getElementById('cdCustomMin'+i))document.getElementById('cdCustomMin'+i).value=m;
+      if(msg&&document.getElementById('cdMsgCustom'+i))document.getElementById('cdMsgCustom'+i).value=msg;
+    }
   }catch(e){}
   // 標準曲は開いたときに自動読み込み
   loadSharedTracks();
