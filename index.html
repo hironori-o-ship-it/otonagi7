@@ -597,6 +597,10 @@ Googleでログイン
   <label>時報音量</label>
   <input type="range" class="vol-slider" id="announcementVolumeSlider" min="0" max="100" value="100" oninput="setAnnouncementVolume(this.value)" style="flex:1;margin-left:8px;">
 </div>
+<div class="setting-row" style="margin-top:8px;">
+  <label>読み上げ音量</label>
+  <input type="range" class="vol-slider" id="speechVolumeSlider" min="0" max="100" value="50" oninput="setSpeechVolume(this.value)" style="flex:1;margin-left:8px;">
+</div>
 
 <!-- カウントダウンタイマー設定 -->
 <div style="margin-top:18px;padding-top:14px;border-top:1px solid rgba(255,255,255,0.06);">
@@ -709,6 +713,7 @@ let totalWorkMinutes=0,totalShortMinutes=0,totalLongMinutes=0;
 let playMode='select',currentTrackIndex=0;
 let pomodoroVolume=0.6;
 let announcementVolume=1.0;
+let speechVolume=0.5;
 const MAX_TRACKS=10,STORAGE_KEY='otonagi_';
 
 // Drive state
@@ -1554,7 +1559,7 @@ function speakText(msg) {
     utter.lang = 'ja-JP';
     utter.rate = 0.95;
     utter.pitch = 1.0;
-    utter.volume = 1.0;
+    utter.volume = speechVolume;
     const voice = getBestJapaneseVoice();
     if (voice) utter.voice = voice;
     const resumeTimer = setInterval(() => {
@@ -1667,6 +1672,11 @@ function getNextTrack(){
     return avail[(idx+1)%avail.length];
   }
   return selectedTrack;
+}
+
+function setSpeechVolume(v){
+  speechVolume=v/100;
+  try{localStorage.setItem(STORAGE_KEY+'speechVolume',v);}catch(e){}
 }
 
 function setAnnouncementVolume(v){
@@ -2120,6 +2130,8 @@ async function init(){
     if(pvol){document.getElementById('pomodoroVolumeSlider').value=pvol;setPomodoroVolume(+pvol);}
     const avol=localStorage.getItem(STORAGE_KEY+'announcementVolume');
     if(avol){document.getElementById('announcementVolumeSlider').value=avol;setAnnouncementVolume(+avol);}
+    const svol=localStorage.getItem(STORAGE_KEY+'speechVolume');
+    if(svol){document.getElementById('speechVolumeSlider').value=svol;setSpeechVolume(+svol);}
     ['workDuration','shortBreakDuration','longBreakDuration','longBreakInterval'].forEach(id=>{
       const v=localStorage.getItem(STORAGE_KEY+id);
       if(v)document.getElementById(id).value=v;
