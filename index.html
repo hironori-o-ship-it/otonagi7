@@ -589,6 +589,14 @@ Googleでログイン
 <div class="setting-row"><label>小休憩（分）</label><input type="number" id="shortBreakDuration" value="5" min="1" max="30" onchange="updateDurations()"></div>
 <div class="setting-row"><label>大休憩（分）</label><input type="number" id="longBreakDuration" value="15" min="1" max="60" onchange="updateDurations()"></div>
 <div class="setting-row"><label>大休憩間隔</label><input type="number" id="longBreakInterval" value="4" min="2" max="10"></div>
+<div class="setting-row" style="margin-top:8px;">
+  <label>チャイム音量</label>
+  <input type="range" class="vol-slider" id="pomodoroVolumeSlider" min="0" max="100" value="60" oninput="setPomodoroVolume(this.value)" style="flex:1;margin-left:8px;">
+</div>
+<div class="setting-row" style="margin-top:8px;">
+  <label>時報音量</label>
+  <input type="range" class="vol-slider" id="announcementVolumeSlider" min="0" max="100" value="100" oninput="setAnnouncementVolume(this.value)" style="flex:1;margin-left:8px;">
+</div>
 
 <!-- カウントダウンタイマー設定 -->
 <div style="margin-top:18px;padding-top:14px;border-top:1px solid rgba(255,255,255,0.06);">
@@ -652,6 +660,8 @@ let currentMode='work',timeRemaining=25*60,totalTime=25*60,autoStartTimer=null;
 let selectedTrack=0,volume=0.4,isTimerRunning=false;
 let totalWorkMinutes=0,totalShortMinutes=0,totalLongMinutes=0;
 let playMode='select',currentTrackIndex=0;
+let pomodoroVolume=0.6;
+let announcementVolume=1.0;
 const MAX_TRACKS=10,STORAGE_KEY='otonagi_';
 
 // Drive state
@@ -665,36 +675,43 @@ let googleUserEmail='';
 let currentBgmTab='local';
 const driveCache={};
 
-// ===== 再生済みセット方式（絶対重複なし）=====
-let playedSet = new Set();   // 再生済みのtrack ID
+// ===== シャッフルキュー =====
 let shuffleQueue = [];
 let shuffleQueueIndex = 0;
 
+let playedSet = new Set();
+
+function savePlayedSet(){
+  try{localStorage.setItem(STORAGE_KEY+'playedSet',JSON.stringify([...playedSet]));}catch(e){}
+}
+
+function loadPlayedSet(){
+  try{
+    const saved=localStorage.getItem(STORAGE_KEY+'playedSet');
+    if(saved)playedSet=new Set(JSON.parse(saved));
+  }catch(e){}
+}
+
 function buildShuffleQueue(lib) {
   playedSet.clear();
+  savePlayedSet();
   shuffleQueue = shuffleArray([...lib]);
   shuffleQueueIndex = 0;
 }
 
 function getNextFromQueue(lib) {
-  // 未再生の曲をフィルタリング
   const unplayed = lib.filter(t => !playedSet.has(t.id));
-  
   if (unplayed.length === 0) {
-    // 全曲再生済み→リセットして再シャッフル
     playedSet.clear();
     shuffleQueue = shuffleArray([...lib]);
     shuffleQueueIndex = 0;
-  } else if (shuffleQueueIndex >= shuffleQueue.length || 
-             playedSet.has(shuffleQueue[shuffleQueueIndex]?.id)) {
-    // キューの次の曲が再生済みなら未再生からシャッフルして作り直す
+  } else if (shuffleQueueIndex >= shuffleQueue.length) {
     shuffleQueue = shuffleArray(unplayed);
     shuffleQueueIndex = 0;
   }
-  
   const track = shuffleQueue[shuffleQueueIndex];
   shuffleQueueIndex++;
-  if (track) playedSet.add(track.id);
+  if (track) { playedSet.add(track.id); savePlayedSet(); }
   return track;
 }
 
@@ -1468,16 +1485,11 @@ function updateDurations(){
 
 // ===== ポモドーロ終了メッセージ =====
 const POMODORO_MESSAGES = [
-  'お疲れ様です。ちょっと休憩しましょう。',
-  'お疲れ様です。少し一息いれましょう。',
-  'お疲れ様です。目を閉じて休みましょう。',
-  'お疲れ様です。温かい飲み物はいかがですか。',
-  'お疲れ様です。軽くストレッチしましょう。',
-  'お疲れ様です。少し目を休めましょう。',
-  'お疲れ様です。窓の外を眺めましょう。',
-  'お疲れ様です。深呼吸してみましょう。',
-  'お疲れ様です。肩を回してみましょう。',
-  'お疲れ様です。少し体を動かしましょう。',
+  'Good job. Take a break.',
+  'Good job. Short break.',
+  'Good job. Relax time.',
+  'Good job. Coffee break.',
+  'Good job. Take a break.',
 ];
 
 function getBestJapaneseVoice() {
@@ -1533,7 +1545,7 @@ function playNotif(){
     osc.type='sine';osc.frequency.value=freq;
     const t=ctx.currentTime+i*0.35;
     gain.gain.setValueAtTime(0,t);
-    gain.gain.linearRampToValueAtTime(0.25,t+0.02);
+    gain.gain.linearRampToValueAtTime(pomodoroVolume*0.4,t+0.02);
     gain.gain.exponentialRampToValueAtTime(0.001,t+0.8);
     osc.start(t);osc.stop(t+0.8);
   });
@@ -1611,6 +1623,16 @@ function getNextTrack(){
     return avail[(idx+1)%avail.length];
   }
   return selectedTrack;
+}
+
+function setAnnouncementVolume(v){
+  announcementVolume=v/100;
+  try{localStorage.setItem(STORAGE_KEY+'announcementVolume',v);}catch(e){}
+}
+
+function setPomodoroVolume(v){
+  pomodoroVolume=v/100;
+  try{localStorage.setItem(STORAGE_KEY+'pomodoroVolume',v);}catch(e){}
 }
 
 function setVolume(v){
@@ -1769,7 +1791,7 @@ function playAnnouncement(msg) {
     osc.frequency.value = s.freq;
     const t = ctx.currentTime + offset;
     gain.gain.setValueAtTime(0, t);
-    gain.gain.linearRampToValueAtTime(s.vol, t + 0.02);
+    gain.gain.linearRampToValueAtTime(s.vol * announcementVolume, t + 0.02);
     gain.gain.setValueAtTime(s.vol, t + s.dur - 0.05);
     gain.gain.linearRampToValueAtTime(0, t + s.dur);
     osc.start(t); osc.stop(t + s.dur);
@@ -1983,6 +2005,10 @@ async function init(){
     const pm=localStorage.getItem(STORAGE_KEY+'playMode');if(pm)setPlayMode(pm);
     const vol=localStorage.getItem(STORAGE_KEY+'volume');
     if(vol){document.getElementById('volumeSlider').value=vol;setVolume(+vol);}
+    const pvol=localStorage.getItem(STORAGE_KEY+'pomodoroVolume');
+    if(pvol){document.getElementById('pomodoroVolumeSlider').value=pvol;setPomodoroVolume(+pvol);}
+    const avol=localStorage.getItem(STORAGE_KEY+'announcementVolume');
+    if(avol){document.getElementById('announcementVolumeSlider').value=avol;setAnnouncementVolume(+avol);}
     ['workDuration','shortBreakDuration','longBreakDuration','longBreakInterval'].forEach(id=>{
       const v=localStorage.getItem(STORAGE_KEY+id);
       if(v)document.getElementById(id).value=v;
@@ -1990,6 +2016,7 @@ async function init(){
     updateDurations();
   }catch(e){}
   loadAnnouncements();
+  loadPlayedSet();
   // カウントダウンメッセージ復元
   try{
     const msg15=localStorage.getItem(STORAGE_KEY+'cdMsg15');
