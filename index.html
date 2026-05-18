@@ -665,22 +665,36 @@ let googleUserEmail='';
 let currentBgmTab='local';
 const driveCache={};
 
-// ===== シャッフルキュー =====
+// ===== 再生済みセット方式（絶対重複なし）=====
+let playedSet = new Set();   // 再生済みのtrack ID
 let shuffleQueue = [];
 let shuffleQueueIndex = 0;
 
 function buildShuffleQueue(lib) {
+  playedSet.clear();
   shuffleQueue = shuffleArray([...lib]);
   shuffleQueueIndex = 0;
 }
 
 function getNextFromQueue(lib) {
-  if (shuffleQueue.length === 0 || shuffleQueueIndex >= shuffleQueue.length) {
+  // 未再生の曲をフィルタリング
+  const unplayed = lib.filter(t => !playedSet.has(t.id));
+  
+  if (unplayed.length === 0) {
+    // 全曲再生済み→リセットして再シャッフル
+    playedSet.clear();
     shuffleQueue = shuffleArray([...lib]);
     shuffleQueueIndex = 0;
+  } else if (shuffleQueueIndex >= shuffleQueue.length || 
+             playedSet.has(shuffleQueue[shuffleQueueIndex]?.id)) {
+    // キューの次の曲が再生済みなら未再生からシャッフルして作り直す
+    shuffleQueue = shuffleArray(unplayed);
+    shuffleQueueIndex = 0;
   }
+  
   const track = shuffleQueue[shuffleQueueIndex];
   shuffleQueueIndex++;
+  if (track) playedSet.add(track.id);
   return track;
 }
 
