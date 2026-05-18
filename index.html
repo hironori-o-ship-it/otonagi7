@@ -602,14 +602,7 @@ Googleでログイン
 <div style="margin-top:18px;padding-top:14px;border-top:1px solid rgba(255,255,255,0.06);">
 <div style="font-size:0.72rem;color:var(--accent);font-weight:500;letter-spacing:0.1em;margin-bottom:12px;">カウントダウンタイマー</div>
 <div style="font-size:0.64rem;color:var(--text-dim);margin-bottom:10px;">ポモドーロと独立したシンプルなタイマーです。稼働中はBGMが停止します。</div>
-<div style="margin-bottom:10px;">
-  <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:5px;">
-    <label style="font-size:0.72rem;color:var(--text-mid);">15分タイマー</label>
-    <button class="g-btn btn-sub" id="cdTimer15Btn" onclick="startCountdown(15)" style="font-size:0.62rem;padding:5px 16px;width:auto;">スタート</button>
-  </div>
-  <input type="text" id="cdMsg15" placeholder="終了メッセージ（例：休憩にしましょう）" style="width:100%;padding:5px 10px;border-radius:10px;border:1px solid var(--glass-border);background:rgba(255,255,255,0.04);color:var(--text);font-family:inherit;font-size:0.64rem;">
-  <div style="font-size:0.56rem;color:var(--text-dim);margin-top:4px;opacity:0.7;">※ 省略時は「タイマーが終了しました」と読み上げます</div>
-</div>
+
 <!-- 自由設定タイマー1（常時表示） -->
 <div id="cdCustomBlock1" style="margin-bottom:8px;">
   <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:4px;">
@@ -686,6 +679,11 @@ Googleでログイン
 <button onclick="addAnnouncement()" style="padding:5px 12px;border-radius:20px;font-size:0.62rem;border:1px solid rgba(212,165,116,0.30);background:rgba(212,165,116,0.12);color:var(--accent);cursor:pointer;font-family:inherit;white-space:nowrap;">追加</button>
 </div>
 <div style="font-size:0.58rem;color:var(--text-dim);margin-top:6px;opacity:0.7;">時刻はHH:MM形式で入力。メッセージ省略時は「〇時〇分です」と読み上げます。</div>
+<div style="margin-top:12px;padding-top:10px;border-top:1px solid rgba(255,255,255,0.04);">
+<div style="font-size:0.66rem;color:var(--text-mid);margin-bottom:6px;">自動タイマー終了メッセージ</div>
+<input type="text" id="autoTimerMsg" placeholder="休憩時間終了です" style="width:100%;padding:5px 10px;border-radius:10px;border:1px solid var(--glass-border);background:rgba(255,255,255,0.04);color:var(--text);font-family:inherit;font-size:0.64rem;" oninput="saveAutoTimerMsg()">
+<div style="font-size:0.56rem;color:var(--text-dim);margin-top:4px;opacity:0.7;">※ 時報設定で「自動」ONの時刻に15分タイマーが自動起動します</div>
+</div>
 </div>
 
 </div>
@@ -1713,12 +1711,12 @@ function selectTrack(i){
 
 // ===== 時報・アナウンス機能 =====
 const DEFAULT_ANNOUNCEMENTS = [
-  { h: 8,  m: 0,  msg: '', enabled: true },
-  { h: 10, m: 0,  msg: '', enabled: true },
-  { h: 12, m: 15, msg: '', enabled: true },
-  { h: 13, m: 15, msg: '', enabled: true },
-  { h: 15, m: 0,  msg: '', enabled: true },
-  { h: 17, m: 0,  msg: '', enabled: true },
+  { h: 8,  m: 0,  msg: '', enabled: true,  autoTimer: true  },
+  { h: 10, m: 0,  msg: '', enabled: true,  autoTimer: true  },
+  { h: 12, m: 15, msg: '', enabled: true,  autoTimer: false },
+  { h: 13, m: 15, msg: '', enabled: true,  autoTimer: false },
+  { h: 15, m: 0,  msg: '', enabled: true,  autoTimer: true  },
+  { h: 17, m: 0,  msg: '', enabled: true,  autoTimer: false },
 ];
 
 let announcements = [];
@@ -1759,7 +1757,8 @@ function renderAnnouncementList(){
     row.innerHTML = `
       <div class="switch ${a.enabled?'on':''}" onclick="toggleAnnouncement(${i})" style="width:36px;height:20px;flex-shrink:0;"></div>
       <span style="font-size:0.72rem;color:var(--accent);font-weight:500;min-width:40px;">${hh}:${mm}</span>
-      <span style="font-size:0.66rem;color:var(--text-dim);flex:1;">${displayMsg}</span>
+      <span style="font-size:0.64rem;color:var(--text-dim);flex:1;">${displayMsg}</span>
+      <span style="font-size:0.56rem;color:${a.autoTimer?'var(--accent)':'var(--text-dim)'};cursor:pointer;margin-right:4px;" onclick="toggleAutoTimer(${i})" title="自動15分タイマー">${a.autoTimer?'⏱ON':'⏱'}</span>
       <button onclick="removeAnnouncement(${i})" style="padding:2px 8px;border-radius:20px;font-size:0.55rem;border:1px solid rgba(212,137,106,0.20);background:rgba(212,137,106,0.06);color:var(--pink);cursor:pointer;font-family:inherit;">削除</button>
     `;
     list.appendChild(row);
@@ -1770,6 +1769,21 @@ function toggleAnnouncement(i){
   announcements[i].enabled = !announcements[i].enabled;
   saveAnnouncements();
   renderAnnouncementList();
+}
+
+function toggleAutoTimer(i){
+  announcements[i].autoTimer = !announcements[i].autoTimer;
+  saveAnnouncements();
+  renderAnnouncementList();
+}
+
+function saveAutoTimerMsg(){
+  try{localStorage.setItem(STORAGE_KEY+'autoTimerMsg', document.getElementById('autoTimerMsg').value);}catch(e){}
+}
+
+function getAutoTimerMsg(){
+  const el=document.getElementById('autoTimerMsg');
+  return (el&&el.value.trim()) ? el.value.trim() : '休憩時間終了です';
 }
 
 function removeAnnouncement(i){
@@ -1802,11 +1816,31 @@ function checkAnnouncement() {
   const m = now.getMinutes();
   const key = h + ':' + m;
   if (key === lastAnnouncedTime) return;
-  const target = announcements.find(a => a.h === h && a.m === m && a.enabled);
+
+  // 時報ON/OFFに関係なく、その時刻の設定を探す
+  const target = announcements.find(a => a.h === h && a.m === m);
   if (!target) return;
   lastAnnouncedTime = key;
-  const msg = target.msg || getAutoMsg(h, m);
-  playAnnouncement(msg);
+
+  // 時報がONなら鳴らす
+  if(target.enabled){
+    const msg = target.msg || getAutoMsg(h, m);
+    playAnnouncement(msg);
+  }
+
+  // 自動タイマーがONなら起動（時報ON/OFFに関係なく）
+  if(target.autoTimer){
+    const autoDelay = target.enabled ? 2000 : 0;
+    setTimeout(()=>{
+      if(cdInterval||cdPaused)stopCountdown();
+      cdIs15min=true;
+      cdAnnouncedThree=false;
+      cdTotal=15*60;
+      cdRemaining=cdTotal;
+      cdFinishMsg=getAutoTimerMsg();
+      enterCountdownMode();
+    }, autoDelay);
+  }
 }
 
 function playAnnouncement(msg) {
@@ -2088,6 +2122,11 @@ async function init(){
   }catch(e){}
   loadAnnouncements();
   loadPlayedSet();
+  // 自動タイマーメッセージ復元
+  try{
+    const atm=localStorage.getItem(STORAGE_KEY+'autoTimerMsg');
+    if(atm&&document.getElementById('autoTimerMsg'))document.getElementById('autoTimerMsg').value=atm;
+  }catch(e){}
   // カウントダウンメッセージ復元
   try{
     const msg15=localStorage.getItem(STORAGE_KEY+'cdMsg15');
