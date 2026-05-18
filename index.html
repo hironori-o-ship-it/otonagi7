@@ -1896,6 +1896,7 @@ let cdRemaining = 0;
 let cdTotal = 0;
 let cdIs15min = false;
 let cdAnnouncedThree = false;
+let cdAnnouncedOneMin = false;
 let cdWasBgmPlaying = false;
 
 let cdFinishMsg = '';
@@ -1904,6 +1905,7 @@ function startCountdown(minutes) {
   if (cdInterval || cdPaused) stopCountdown();
   cdIs15min = (minutes === 15);
   cdAnnouncedThree = false;
+  cdAnnouncedOneMin = false;
   cdTotal = minutes * 60;
   cdRemaining = cdTotal;
   cdFinishMsg = document.getElementById('cdMsg15').value.trim() || 'タイマーが終了しました';
@@ -1925,6 +1927,7 @@ function startCountdownCustomN(n) {
   if (cdInterval || cdPaused) stopCountdown();
   cdIs15min = false;
   cdAnnouncedThree = false;
+  cdAnnouncedOneMin = false;
   cdTotal = min * 60;
   cdRemaining = cdTotal;
   cdFinishMsg = msg || 'タイマーが終了しました';
@@ -1938,6 +1941,7 @@ function startCountdownCustom() {
   if (cdInterval || cdPaused) stopCountdown();
   cdIs15min = false;
   cdAnnouncedThree = false;
+  cdAnnouncedOneMin = false;
   cdTotal = min * 60;
   cdRemaining = cdTotal;
   cdFinishMsg = document.getElementById('cdMsgCustom').value.trim() || 'タイマーが終了しました';
@@ -1956,11 +1960,11 @@ function enterCountdownMode() {
     document.getElementById('timerOffBtn').textContent = 'タイマー OFF';
     document.getElementById('timerOffBtn').style.opacity = '0.6';
   }
-  // BGM状態を保存して音量50%に（停止しない）
+  // BGMはそのまま流し続ける（音量変更なし）
   cdWasBgmPlaying = isPlaying || isTimerOff;
   if (cdWasBgmPlaying) {
     mp3Player.loop = false;
-    mp3Player.volume = volume * 0.5;
+    mp3Player.volume = volume;
     if (!isPlaying) {
       initAudio();
       isPlaying = true;
@@ -1993,6 +1997,11 @@ function enterCountdownMode() {
     if (cdIs15min && cdRemaining === 180 && !cdAnnouncedThree) {
       cdAnnouncedThree = true;
       playAnnouncement('あと3分です');
+    }
+    // 全タイマー: 残り1分アナウンス
+    if (cdRemaining === 60 && !cdAnnouncedOneMin) {
+      cdAnnouncedOneMin = true;
+      playAnnouncement('あと1分です');
     }
     if (cdRemaining <= 0) {
       cdRemaining = 0;
