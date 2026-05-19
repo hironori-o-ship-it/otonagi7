@@ -2058,7 +2058,6 @@ function pauseResumeCountdown() {
 function finishCountdown() {
   clearInterval(cdInterval);
   cdInterval = null;
-  playNotif();
   playAnnouncement(cdFinishMsg);
   setTimeout(() => {
     exitCountdownMode();
