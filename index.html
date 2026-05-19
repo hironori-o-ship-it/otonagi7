@@ -1459,14 +1459,12 @@ function completeSession(){
     updateStats();
     currentMode='work';
   }
-  // 次のセッション用にランダムで曲を変える
+  // 次のセッション用に次の曲を再生
   if(isDriveTrack){
-    const lib=currentBgmTab==='personal'?personalTracks:sharedTracks;
+    const lib=currentBgmTab==='personal'?[...personalTracks]:[...sharedTracks];
     if(lib.length>1){
-      let next;
-      const idx=lib.findIndex(t=>t.id===currentDriveTrack.id);
-      do{next=Math.floor(Math.random()*lib.length);}while(next===idx);
-      currentDriveTrack=lib[next];
+      const nextTrack = getNextFromQueue(lib);
+      if(nextTrack) playDriveTrack(nextTrack, currentBgmTab);
     }
   }else{
     const avail=[];for(let i=0;i<MAX_TRACKS;i++){if(tracks[i])avail.push(i);}
