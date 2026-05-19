@@ -725,7 +725,26 @@ let isDriveTrack=false;
 let googleAccessToken=null;
 let googleUserEmail='';
 let currentBgmTab='local';
+// キャッシュ最大10曲（古いものから解放）
 const driveCache={};
+const driveCacheOrder=[];
+const CACHE_MAX=10;
+
+function setCacheTrack(id, blobUrl){
+  // 既存なら順番を更新
+  const idx=driveCacheOrder.indexOf(id);
+  if(idx!==-1) driveCacheOrder.splice(idx,1);
+  driveCacheOrder.push(id);
+  driveCache[id]=blobUrl;
+  // 上限超えたら古いものを解放
+  while(driveCacheOrder.length>CACHE_MAX){
+    const old=driveCacheOrder.shift();
+    if(driveCache[old]){
+      URL.revokeObjectURL(driveCache[old]);
+      delete driveCache[old];
+    }
+  }
+}
 
 // ===== シャッフルキュー =====
 let shuffleQueue = [];
@@ -1322,7 +1341,7 @@ async function playDriveTrack(track,type){
       if(!res.ok)throw new Error('取得失敗 '+res.status);
       const blob=await res.blob();
       blobUrl=URL.createObjectURL(blob);
-      driveCache[track.id]=blobUrl;
+      setCacheTrack(track.id, blobUrl);
     }
     if(statusEl)statusEl.textContent='';
     isPlaying=true;
