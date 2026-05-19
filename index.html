@@ -1551,8 +1551,8 @@ function getBestJapaneseVoice() {
   return voices.find(v => v.lang && v.lang.startsWith('ja')) || null;
 }
 
-function speakText(msg) {
-  if (!('speechSynthesis' in window)) return;
+function speakText(msg, onEnd) {
+  if (!('speechSynthesis' in window)) { if(onEnd) onEnd(); return; }
   window.speechSynthesis.cancel();
   const doSpeak = () => {
     const utter = new SpeechSynthesisUtterance(msg);
@@ -1567,7 +1567,7 @@ function speakText(msg) {
       window.speechSynthesis.pause();
       window.speechSynthesis.resume();
     }, 5000);
-    utter.onend = () => clearInterval(resumeTimer);
+    utter.onend = () => { clearInterval(resumeTimer); if(onEnd) onEnd(); };
     window.speechSynthesis.speak(utter);
   };
   if (window.speechSynthesis.getVoices().length > 0) {
@@ -1850,23 +1850,15 @@ function checkAnnouncement() {
   }
 }
 
-function playAnnouncement(msg) {
-  // BGMを一時的に下げる
-  const originalVolume = mp3Player.volume;
-  mp3Player.volume = originalVolume * 0.15;
+function playChime(onEnd) {
   initAudio();
   const ctx = audioCtx;
-
-  // ぴ・ぴ・ぴ・ぴー → ボーン → ボーン → ピー
   const sounds = [
-    // ぴ×3（短）
     { freq: 1320, dur: 0.15, gap: 0.15, type: 'sine', vol: 1.0 },
     { freq: 1320, dur: 0.15, gap: 0.15, type: 'sine', vol: 1.0 },
     { freq: 1320, dur: 0.15, gap: 0.15, type: 'sine', vol: 1.0 },
-    // ぴーー（長）
     { freq: 1320, dur: 0.6,  gap: 0,    type: 'sine', vol: 1.0 },
   ];
-
   let offset = 0;
   sounds.forEach((s) => {
     const osc = ctx.createOscillator();
@@ -1882,12 +1874,23 @@ function playAnnouncement(msg) {
     osc.start(t); osc.stop(t + s.dur);
     offset += s.dur + s.gap;
   });
+  if (onEnd) setTimeout(onEnd, offset * 1000 + 200);
+}
 
-  // 音終了後にBGM音量を戻す
-  setTimeout(() => {
-    mp3Player.volume = originalVolume;
-    speakText(msg);
-  }, offset * 1000 + 200);
+function playAnnouncement(msg) {
+  // BGMを一時的に下げる
+  const originalVolume = mp3Player.volume;
+  mp3Player.volume = originalVolume * 0.15;
+
+  // NHK風：読み上げ→チャイムの順番
+  speakText(msg, () => {
+    // 読み上げ終了後にチャイム
+    setTimeout(() => {
+      playChime(() => {
+        mp3Player.volume = originalVolume;
+      });
+    }, 200);
+  });
 }
 
 setInterval(checkAnnouncement, 10000);
