@@ -1441,7 +1441,7 @@ function toggleTimerOff(){
 function completeSession(){
   clearInterval(timerInterval);isTimerRunning=false;stopMusic();playNotif();
   // 作業セッション終了時のみメッセージ再生（休憩終了時は再生しない）
-  if(currentMode==='work')speakPomodoroMessage();
+  if(currentMode==='work')speakPomodoroMessageSmart();
   cycleBg();
   if(currentMode==='work'){
     totalWorkMinutes+=+document.getElementById('workDuration').value;
@@ -1575,6 +1575,30 @@ function speakText(msg, onEnd) {
   } else {
     window.speechSynthesis.onvoiceschanged = doSpeak;
   }
+}
+
+function shouldSkipPomodoroMessage() {
+  const now = new Date();
+  const h = now.getHours();
+  const m = now.getMinutes();
+  const totalMin = h * 60 + m;
+
+  // 自動タイマーONの時刻の前後15分はスキップ
+  const autoTimerTimes = announcements
+    .filter(a => a.autoTimer)
+    .map(a => a.h * 60 + a.m);
+
+  for (const t of autoTimerTimes) {
+    if (totalMin >= t - 15 && totalMin <= t + 15) return true;
+  }
+  // カウントダウンタイマー稼働中もスキップ
+  if (cdInterval || cdPaused) return true;
+  return false;
+}
+
+function speakPomodoroMessageSmart() {
+  if (shouldSkipPomodoroMessage()) return;
+  speakPomodoroMessage();
 }
 
 function speakPomodoroMessage() {
