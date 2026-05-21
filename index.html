@@ -1579,12 +1579,7 @@ function speakText(msg, onEnd) {
     utter.volume = speechVolume;
     const voice = getBestJapaneseVoice();
     if (voice) utter.voice = voice;
-    const resumeTimer = setInterval(() => {
-      if (!window.speechSynthesis.speaking) { clearInterval(resumeTimer); return; }
-      window.speechSynthesis.pause();
-      window.speechSynthesis.resume();
-    }, 5000);
-    utter.onend = () => { clearInterval(resumeTimer); if(onEnd) onEnd(); };
+    utter.onend = () => { if(onEnd) onEnd(); };
     window.speechSynthesis.speak(utter);
   };
   if (window.speechSynthesis.getVoices().length > 0) {
