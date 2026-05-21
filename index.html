@@ -591,15 +591,15 @@ Googleでログイン
 <div class="setting-row"><label>大休憩間隔</label><input type="number" id="longBreakInterval" value="4" min="2" max="10"></div>
 <div class="setting-row" style="margin-top:8px;">
   <label>チャイム音量</label>
-  <input type="range" class="vol-slider" id="pomodoroVolumeSlider" min="0" max="100" value="60" oninput="setPomodoroVolume(this.value)" style="flex:1;margin-left:8px;">
+  <input type="range" class="vol-slider" id="pomodoroVolumeSlider" min="0" max="50" value="30" oninput="setPomodoroVolume(this.value)" style="flex:1;margin-left:8px;">
 </div>
 <div class="setting-row" style="margin-top:8px;">
   <label>時報音量</label>
-  <input type="range" class="vol-slider" id="announcementVolumeSlider" min="0" max="100" value="100" oninput="setAnnouncementVolume(this.value)" style="flex:1;margin-left:8px;">
+  <input type="range" class="vol-slider" id="announcementVolumeSlider" min="0" max="50" value="40" oninput="setAnnouncementVolume(this.value)" style="flex:1;margin-left:8px;">
 </div>
 <div class="setting-row" style="margin-top:8px;">
   <label>読み上げ音量</label>
-  <input type="range" class="vol-slider" id="speechVolumeSlider" min="0" max="100" value="50" oninput="setSpeechVolume(this.value)" style="flex:1;margin-left:8px;">
+  <input type="range" class="vol-slider" id="speechVolumeSlider" min="0" max="50" value="30" oninput="setSpeechVolume(this.value)" style="flex:1;margin-left:8px;">
 </div>
 
 <!-- カウントダウンタイマー設定 -->
@@ -711,9 +711,9 @@ let currentMode='work',timeRemaining=25*60,totalTime=25*60,autoStartTimer=null;
 let selectedTrack=0,volume=0.4,isTimerRunning=false;
 let totalWorkMinutes=0,totalShortMinutes=0,totalLongMinutes=0;
 let playMode='select',currentTrackIndex=0;
-let pomodoroVolume=0.6;
-let announcementVolume=1.0;
-let speechVolume=0.5;
+let pomodoroVolume=0.3;
+let announcementVolume=0.4;
+let speechVolume=0.3;
 const MAX_TRACKS=10,STORAGE_KEY='otonagi_';
 
 // Drive state
