@@ -1768,8 +1768,26 @@ let lastAnnouncedTime = '';
 function loadAnnouncements(){
   try{
     const saved = localStorage.getItem(STORAGE_KEY+'announcements');
-    if(saved) announcements = JSON.parse(saved);
-    else announcements = JSON.parse(JSON.stringify(DEFAULT_ANNOUNCEMENTS));
+    if(saved){
+      announcements = JSON.parse(saved);
+      // 古いデータにautoTimerプロパティがない場合はデフォルト値を補完
+      announcements = announcements.map(a => ({
+        ...a,
+        autoTimer: a.autoTimer !== undefined ? a.autoTimer : false
+      }));
+      // 8:00・10:00・15:00はデフォルトでautoTimer:trueに
+      announcements = announcements.map(a => {
+        if((a.h===8&&a.m===0)||(a.h===10&&a.m===0)||(a.h===15&&a.m===0)){
+          if(a.autoTimer===false && !localStorage.getItem(STORAGE_KEY+'autoTimerSet')){
+            return {...a, autoTimer: true};
+          }
+        }
+        return a;
+      });
+    } else {
+      announcements = JSON.parse(JSON.stringify(DEFAULT_ANNOUNCEMENTS));
+    }
+    localStorage.setItem(STORAGE_KEY+'autoTimerSet','1');
   }catch(e){
     announcements = JSON.parse(JSON.stringify(DEFAULT_ANNOUNCEMENTS));
   }
