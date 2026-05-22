@@ -595,7 +595,7 @@ Googleでログイン
 </div>
 <div class="setting-row" style="margin-top:8px;">
   <label>時報音量</label>
-  <input type="range" class="vol-slider" id="announcementVolumeSlider" min="0" max="50" value="40" oninput="setAnnouncementVolume(this.value)" style="flex:1;margin-left:8px;">
+  <input type="range" class="vol-slider" id="announcementVolumeSlider" min="0" max="30" value="20" oninput="setAnnouncementVolume(this.value)" style="flex:1;margin-left:8px;">
 </div>
 <div class="setting-row" style="margin-top:8px;">
   <label>読み上げ音量</label>
@@ -712,7 +712,7 @@ let selectedTrack=0,volume=0.4,isTimerRunning=false;
 let totalWorkMinutes=0,totalShortMinutes=0,totalLongMinutes=0;
 let playMode='select',currentTrackIndex=0;
 let pomodoroVolume=0.3;
-let announcementVolume=0.4;
+let announcementVolume=0.2;
 let speechVolume=0.3;
 const MAX_TRACKS=10,STORAGE_KEY='otonagi_';
 
@@ -1908,10 +1908,10 @@ function playChime(onEnd) {
   initAudio();
   const ctx = audioCtx;
   const sounds = [
-    { freq: 1320, dur: 0.15, gap: 0.15, type: 'sine', vol: 1.0 },
-    { freq: 1320, dur: 0.15, gap: 0.15, type: 'sine', vol: 1.0 },
-    { freq: 1320, dur: 0.15, gap: 0.15, type: 'sine', vol: 1.0 },
-    { freq: 1320, dur: 0.6,  gap: 0,    type: 'sine', vol: 1.0 },
+    { freq: 660, dur: 0.2, gap: 0.2, type: 'triangle', vol: 0.5 },
+    { freq: 660, dur: 0.2, gap: 0.2, type: 'triangle', vol: 0.5 },
+    { freq: 660, dur: 0.2, gap: 0.2, type: 'triangle', vol: 0.5 },
+    { freq: 660, dur: 0.6, gap: 0,   type: 'triangle', vol: 0.4 },
   ];
   let offset = 0;
   sounds.forEach((s) => {
