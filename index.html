@@ -1936,11 +1936,10 @@ function playAnnouncement(msg) {
   const originalVolume = mp3Player.volume;
   mp3Player.volume = originalVolume * 0.15;
 
-  // NHK風：読み上げ→チャイムの順番
-  speakText(msg, () => {
-    // 読み上げ終了後にチャイム
+  // チャイム→読み上げの順番
+  playChime(() => {
     setTimeout(() => {
-      playChime(() => {
+      speakText(msg, () => {
         mp3Player.volume = originalVolume;
       });
     }, 200);
