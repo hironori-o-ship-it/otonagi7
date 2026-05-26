@@ -746,43 +746,66 @@ function setCacheTrack(id, blobUrl){
   }
 }
 
-// ===== シャッフルキュー =====
-let shuffleQueue = [];
-let shuffleQueueIndex = 0;
+// ===== 100曲グループシャッフル =====
+const GROUP_SIZE = 100;
+let groups = [];          // グループ配列（各100曲シャッフル済み）
+let groupOrder = [];      // グループの再生順（ランダム）
+let groupOrderIndex = 0;  // 現在のグループ順番インデックス
+let groupQueue = [];      // 現在のグループのキュー
+let groupQueueIndex = 0;  // 現在のグループ内インデックス
 
 let playedSet = new Set();
 
 function savePlayedSet(){
-  try{localStorage.setItem(STORAGE_KEY+'playedSet',JSON.stringify([...playedSet]));}catch(e){}
+  try{
+    localStorage.setItem(STORAGE_KEY+'playedSet', JSON.stringify([...playedSet]));
+    localStorage.setItem(STORAGE_KEY+'groupOrderIndex', groupOrderIndex);
+    localStorage.setItem(STORAGE_KEY+'groupQueueIndex', groupQueueIndex);
+  }catch(e){}
 }
 
 function loadPlayedSet(){
   try{
-    const saved=localStorage.getItem(STORAGE_KEY+'playedSet');
-    if(saved)playedSet=new Set(JSON.parse(saved));
+    const saved = localStorage.getItem(STORAGE_KEY+'playedSet');
+    if(saved) playedSet = new Set(JSON.parse(saved));
   }catch(e){}
 }
 
 function buildShuffleQueue(lib) {
+  // 全曲をシャッフルして100曲ずつグループ化
+  const shuffled = shuffleArray([...lib]);
+  groups = [];
+  for(let i = 0; i < shuffled.length; i += GROUP_SIZE){
+    groups.push(shuffleArray(shuffled.slice(i, i + GROUP_SIZE)));
+  }
+  // グループの順番もランダムに
+  groupOrder = shuffleArray([...Array(groups.length).keys()]);
+  groupOrderIndex = 0;
+  groupQueue = [...groups[groupOrder[0]]];
+  groupQueueIndex = 0;
   playedSet.clear();
   savePlayedSet();
-  shuffleQueue = shuffleArray([...lib]);
-  shuffleQueueIndex = 0;
 }
 
 function getNextFromQueue(lib) {
-  const unplayed = lib.filter(t => !playedSet.has(t.id));
-  if (unplayed.length === 0) {
-    playedSet.clear();
-    shuffleQueue = shuffleArray([...lib]);
-    shuffleQueueIndex = 0;
-  } else if (shuffleQueueIndex >= shuffleQueue.length) {
-    shuffleQueue = shuffleArray(unplayed);
-    shuffleQueueIndex = 0;
+  // グループ未構築なら構築
+  if(groups.length === 0){ buildShuffleQueue(lib); }
+
+  // 現在のグループが終わったら次のグループへ
+  if(groupQueueIndex >= groupQueue.length){
+    groupOrderIndex++;
+    // 全グループ消化したら再シャッフル
+    if(groupOrderIndex >= groupOrder.length){
+      buildShuffleQueue(lib);
+    } else {
+      groupQueue = shuffleArray([...groups[groupOrder[groupOrderIndex]]]);
+      groupQueueIndex = 0;
+    }
   }
-  const track = shuffleQueue[shuffleQueueIndex];
-  shuffleQueueIndex++;
-  if (track) { playedSet.add(track.id); savePlayedSet(); }
+
+  const track = groupQueue[groupQueueIndex];
+  groupQueueIndex++;
+  if(track){ playedSet.add(track.id); savePlayedSet(); }
   return track;
 }
 
