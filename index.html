@@ -557,7 +557,7 @@ Googleでログイン
 <!-- 音量 -->
 <div class="bgm-row" style="margin-top:12px">
 <span class="bgm-label">音量</span>
-<input type="range" class="vol-slider" id="volumeSlider" min="0" max="100" value="40" oninput="setVolume(this.value)">
+<input type="range" class="vol-slider" id="volumeSlider" min="0" max="100" value="60" oninput="setVolume(this.value)">
 </div>
 
 <!-- Now Playing -->
@@ -1693,22 +1693,17 @@ function manualShuffle(){
   const lib = currentBgmTab==='personal' ? personalTracks : sharedTracks;
   if(lib.length === 0) return;
 
-  // 全曲の順番をシャッフル
-  const shuffled = shuffleArray([...lib]);
-  if(currentBgmTab==='personal'){
-    personalTracks = shuffled;
-  } else {
-    sharedTracks = shuffled;
-  }
-  buildShuffleQueue(shuffled);
+  // グループ全体を再シャッフルしてキュー再構築
+  buildShuffleQueue(lib);
 
-  // リストを再描画して順番を反映
+  // リストを再描画（グループ1の順番で表示）
   const containerId = currentBgmTab==='personal' ? 'personalTrackList' : 'sharedTrackList';
-  renderDriveList(containerId, shuffled, currentBgmTab);
+  const displayList = groups.length > 0 ? groups[groupOrder[0]] : lib;
+  renderDriveList(containerId, displayList, currentBgmTab);
 
-  // 再生中なら即座に1曲目から再生開始
+  // 即座にグループ1の1曲目から再生開始
   if(isDriveTrack && isPlaying){
-    playDriveTrack(shuffled[0], currentBgmTab);
+    playDriveTrack(groupQueue[0], currentBgmTab);
     cycleBg();
   }
 
@@ -1955,18 +1950,19 @@ function playChime(onEnd) {
 }
 
 function playAnnouncement(msg) {
-  // BGMを一時的に下げる
-  const originalVolume = mp3Player.volume;
-  mp3Player.volume = originalVolume * 0.15;
+  // BGMを一時的に下げる（base volumeを使って積み重ねを防ぐ）
+  mp3Player.volume = volume * 0.15;
 
   // チャイム→読み上げの順番
   playChime(() => {
     setTimeout(() => {
       speakText(msg, () => {
-        mp3Player.volume = originalVolume;
+        mp3Player.volume = volume;
       });
     }, 200);
   });
+  // フォールバック：5秒後に必ずvolume復元
+  setTimeout(() => { mp3Player.volume = volume; }, 5000);
 }
 
 setInterval(checkAnnouncement, 10000);
