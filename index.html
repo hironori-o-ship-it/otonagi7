@@ -708,7 +708,7 @@ const DRIVE_CONFIG = {
 // ===== STATE =====
 let audioCtx=null,masterGain=null,currentNodes=[],isPlaying=false,timerInterval=null;
 let currentMode='work',timeRemaining=25*60,totalTime=25*60,autoStartTimer=null;
-let selectedTrack=0,volume=0.4,isTimerRunning=false;
+let selectedTrack=0,volume=0.6,isTimerRunning=false;
 let totalWorkMinutes=0,totalShortMinutes=0,totalLongMinutes=0;
 let playMode='select',currentTrackIndex=0;
 let pomodoroVolume=0.3;
@@ -2258,6 +2258,16 @@ function refreshApp(){
     location.reload(true);
   }
 }
+
+// ===== 音量監視（無音バグ防止）=====
+setInterval(() => {
+  if(isPlaying && mp3Player && !mp3Player.paused){
+    // 再生中なのに音量が極端に低い場合は修正
+    if(mp3Player.volume < 0.05){
+      mp3Player.volume = volume;
+    }
+  }
+}, 2000);
 
 // ===== オーディオデバイス変更対応 =====
 if(navigator.mediaDevices && navigator.mediaDevices.addEventListener){
