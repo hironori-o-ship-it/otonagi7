@@ -2259,6 +2259,21 @@ function refreshApp(){
   }
 }
 
+// ===== オーディオデバイス変更対応 =====
+if(navigator.mediaDevices && navigator.mediaDevices.addEventListener){
+  navigator.mediaDevices.addEventListener('devicechange', () => {
+    // デバイス変更後に音量を再設定して再生を維持
+    setTimeout(() => {
+      if(isPlaying && mp3Player){
+        mp3Player.volume = volume;
+        if(mp3Player.paused){
+          mp3Player.play().catch(()=>{});
+        }
+      }
+    }, 500);
+  });
+}
+
 if('serviceWorker' in navigator){
   navigator.serviceWorker.register('sw.js').catch(()=>{});
 }
