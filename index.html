@@ -1369,9 +1369,12 @@ async function playDriveTrack(track,type){
     if(statusEl)statusEl.textContent='';
     isPlaying=true;
     mp3Player.src=blobUrl;
-    mp3Player.volume=volume;
     mp3Player.loop=false;
-    mp3Player.play().catch(()=>{});
+    // 音量を確実に設定してから再生（アナウンスとの競合防止）
+    setTimeout(() => {
+      mp3Player.volume=volume;
+      mp3Player.play().catch(()=>{});
+    }, 100);
     updateNowPlaying();
     updateViz();
     randomBg();
