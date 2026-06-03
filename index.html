@@ -685,8 +685,8 @@ Googleでログイン
 <div style="font-size:0.58rem;color:var(--text-dim);margin-top:6px;opacity:0.7;">時刻はHH:MM形式で入力。メッセージ省略時は「〇時〇分です」と読み上げます。</div>
 <div style="margin-top:12px;padding-top:10px;border-top:1px solid rgba(255,255,255,0.04);">
 <div style="font-size:0.66rem;color:var(--text-mid);margin-bottom:6px;">自動タイマー終了メッセージ</div>
-<input type="text" id="autoTimerMsg" placeholder="休憩時間終了です" style="width:100%;padding:5px 10px;border-radius:10px;border:1px solid var(--glass-border);background:rgba(255,255,255,0.04);color:var(--text);font-family:inherit;font-size:0.64rem;" oninput="saveAutoTimerMsg()">
-<div style="font-size:0.56rem;color:var(--text-dim);margin-top:4px;opacity:0.7;">※ 時報設定で「自動」ONの時刻に15分タイマーが自動起動します</div>
+<input type="text" id="autoTimerMsg" placeholder="空欄なら応援メッセージをランダム再生" style="width:100%;padding:5px 10px;border-radius:10px;border:1px solid var(--glass-border);background:rgba(255,255,255,0.04);color:var(--text);font-family:inherit;font-size:0.64rem;" oninput="saveAutoTimerMsg()">
+<div style="font-size:0.56rem;color:var(--text-dim);margin-top:4px;opacity:0.7;">※ 時報設定で「自動」ONの時刻に15分タイマーが自動起動します。この15分間はポモドーロは停止します。<br>※ 空欄にすると休憩終了時に応援メッセージをランダムで読み上げます。</div>
 </div>
 </div>
 
@@ -1396,6 +1396,11 @@ function switchMode(mode){
 function toggleTimer(){if(isTimerRunning)pauseTimer();else startTimer();}
 
 function startTimer(){
+  // 休憩カウントダウン中はポモドーロを起動させない（休憩中ロック）
+  if(cdInterval || cdPaused){
+    document.getElementById('timerLabel').textContent='休憩中';
+    return;
+  }
   initAudio();isTimerRunning=true;
   document.getElementById('startBtn').textContent='一時停止';
   document.getElementById('timerLabel').textContent=currentMode==='work'?'集中':'ブレイク';
@@ -1450,7 +1455,11 @@ function stopTimer(){
   document.title='音凪';
 }
 
-function skipSession(){completeSession();}
+function skipSession(){
+  // 休憩カウントダウン中はスキップでポモドーロを進めない
+  if(cdInterval || cdPaused) return;
+  completeSession();
+}
 
 function toggleTimerOff(){
   const timerDisplay=document.getElementById('timerDisplay');
@@ -1484,6 +1493,12 @@ function toggleTimerOff(){
 }
 
 function completeSession(){
+  // 休憩カウントダウン中はポモドーロのセッション完了処理を行わない（チャイム・アナウンス防止）
+  if(cdInterval || cdPaused){
+    clearInterval(timerInterval);
+    isTimerRunning=false;
+    return;
+  }
   clearInterval(timerInterval);isTimerRunning=false;stopMusic();playNotif();
   // 作業セッション終了時のみメッセージ再生（休憩終了時は再生しない）
   if(currentMode==='work')speakPomodoroMessageSmart();
@@ -1524,7 +1539,8 @@ function completeSession(){
   document.getElementById('timerLabel').textContent=label[currentMode];
   document.getElementById('startBtn').textContent='スタート';
   document.title='音凪 - 次：'+label[currentMode];
-  autoStartTimer=setTimeout(()=>{startTimer();},1500);
+  // 自動で次セッションを開始（ただし休憩カウントダウン中は開始しない）
+  autoStartTimer=setTimeout(()=>{ if(!(cdInterval||cdPaused)) startTimer(); },1500);
 }
 
 function updateTimerDisplay(){
@@ -1584,6 +1600,21 @@ const POMODORO_MESSAGES = [
   'お疲れ様です。ちょっとリフレッシュしましょう。',
 ];
 
+// ===== 休憩終了（自動タイマー終了）の応援メッセージ =====
+const BREAK_END_MESSAGES = [
+  '休憩終了です。さあ、お仕事再開しましょう。今日のあなたは絶好調ですよ。',
+  '休憩終了でーす。リフレッシュできましたか。後半戦も軽やかに行きましょう。',
+  '休憩おしまい、お仕事の時間です。深呼吸ひとつ、いきますよー。ファイトです。',
+  '休憩終了のお知らせです。ここから巻き返し、いってみましょう。あなたならできます。',
+  '休憩タイム終わり。エンジン再始動です。今日も一歩ずつ、お疲れさまの先へ。',
+  '休憩終了です。コーヒーは飲みましたか。さあ、続きをやっつけましょう。',
+  '休憩おわりでーす。よく頑張っています。あと少し、ご機嫌に進めましょう。',
+];
+
+function getBreakEndMessage() {
+  return BREAK_END_MESSAGES[Math.floor(Math.random() * BREAK_END_MESSAGES.length)];
+}
+
 function getBestJapaneseVoice() {
   const voices = window.speechSynthesis.getVoices();
   const preferred = ['Kyoko', 'O-ren', 'Google 日本語', 'Google Japanese', 'Microsoft Haruka'];
@@ -1621,13 +1652,17 @@ function shouldSkipPomodoroMessage() {
   const m = now.getMinutes();
   const totalMin = h * 60 + m;
 
-  // 自動タイマーONの時刻の前後15分はスキップ
+  // 休憩モード中（小休憩・長休憩）は「お疲れ様です」を出さない
+  if (currentMode === 'short' || currentMode === 'long') return true;
+
+  // 自動タイマーONの時刻＝休憩開始。その時刻から休憩終了（+15分）までは
+  // 休憩中なので「お疲れ様です」を出さない（喋りのラグも考慮して +16分まで）
   const autoTimerTimes = announcements
     .filter(a => a.autoTimer)
     .map(a => a.h * 60 + a.m);
 
   for (const t of autoTimerTimes) {
-    if (totalMin >= t - 15 && totalMin <= t + 15) return true;
+    if (totalMin >= t - 1 && totalMin <= t + 16) return true;
   }
   // カウントダウンタイマー稼働中もスキップ
   if (cdInterval || cdPaused) return true;
@@ -1865,7 +1900,8 @@ function saveAutoTimerMsg(){
 
 function getAutoTimerMsg(){
   const el=document.getElementById('autoTimerMsg');
-  return (el&&el.value.trim()) ? el.value.trim() : '休憩時間終了です';
+  // 手入力があればそれを優先。未入力ならランダムの応援メッセージ。
+  return (el&&el.value.trim()) ? el.value.trim() : getBreakEndMessage();
 }
 
 function removeAnnouncement(i){
@@ -1914,6 +1950,12 @@ function checkAnnouncement() {
   if(target.autoTimer){
     const autoDelay = target.enabled ? 2000 : 0;
     setTimeout(()=>{
+      // 既存ポモドーロを完全停止してから休憩カウントダウンへ
+      if(isTimerRunning){
+        isTimerRunning=false;
+        clearInterval(timerInterval);
+      }
+      if(autoStartTimer){clearTimeout(autoStartTimer);autoStartTimer=null;}
       if(cdInterval||cdPaused)stopCountdown();
       cdIs15min=true;
       cdAnnouncedThree=false;
@@ -2060,13 +2102,19 @@ function enterCountdownMode() {
     document.getElementById('startBtn').textContent = 'スタート';
     document.getElementById('timerLabel').textContent = 'スタート';
   }
+  // 念のため自動再開タイマーも解除
+  if (autoStartTimer) { clearTimeout(autoStartTimer); autoStartTimer = null; }
+
+  // 休憩中フラグ（15分の自動タイマー＝休憩タイマーのとき）
+  if (cdIs15min) currentMode = 'short';
 
   // UI切替
   document.getElementById('timerDisplay').classList.add('countdown-mode');
-  document.getElementById('timerLabel').textContent = 'カウントダウン';
+  document.getElementById('timerLabel').textContent = cdIs15min ? '休憩中' : 'カウントダウン';
   document.getElementById('startBtn').textContent = '一時停止';
   document.getElementById('startBtn').onclick = pauseResumeCountdown;
   document.getElementById('cdStatusBar').style.display = '';
+  document.getElementById('cdStatusBar').textContent = cdIs15min ? '休憩中（ポモドーロ停止）' : 'カウントダウン稼働中';
 
   updateCdDisplay();
   updateCdProgress();
@@ -2149,6 +2197,8 @@ function stopCountdown() {
 function exitCountdownMode() {
   cdInterval = null;
   cdPaused = false;
+  // 休憩タイマー終了→作業モードに戻す
+  if (cdIs15min) currentMode = 'work';
   document.getElementById('timerDisplay').classList.remove('countdown-mode');
   document.getElementById('progressBar').style.background = '';
   document.getElementById('timerLabel').textContent = 'スタート';
