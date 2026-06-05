@@ -1995,6 +1995,8 @@ function playChime(onEnd) {
 }
 
 function playAnnouncement(msg) {
+  // 無音復活ウォッチドッグへ「意図的にBGMを絞っている区間」を通知
+  announcePlaying = true;
   // BGMを一時的に下げる（base volumeを使って積み重ねを防ぐ）
   mp3Player.volume = volume * 0.15;
 
@@ -2003,11 +2005,12 @@ function playAnnouncement(msg) {
     setTimeout(() => {
       speakText(msg, () => {
         mp3Player.volume = volume;
+        announcePlaying = false;
       });
     }, 200);
   });
   // フォールバック：5秒後に必ずvolume復元
-  setTimeout(() => { mp3Player.volume = volume; }, 5000);
+  setTimeout(() => { mp3Player.volume = volume; announcePlaying = false; }, 5000);
 }
 
 setInterval(checkAnnouncement, 10000);
@@ -2309,13 +2312,70 @@ function refreshApp(){
   }
 }
 
-// ===== 音量監視（無音バグ防止）=====
+// ===== 無音復活ウォッチドッグ（出力経路断の自動復旧）=====
+// 症状：BGMの再生位置(currentTime)は止まっていないのに音だけ出ない
+//      （Bluetooth経路が一瞬切れ、<audio>が無音の出力先に繋がったまま再生継続）。
+// 対策：再生中にcurrentTimeの進行を監視し、止まっていたら pause→play を
+//      自動で打ち直して出力先を取り直す（手動の「一旦止めて再生」の自動化）。
+let announcePlaying = false;      // アナウンス・時報で意図的にBGMを絞っている区間
+let _wdLastTime = 0;              // 前回チェック時の再生位置
+let _wdStallCount = 0;            // 進行停止が連続した回数
+let _wdCooldownUntil = 0;         // 復旧後のクールダウン期限(ms)
+
 setInterval(() => {
-  if(isPlaying && mp3Player && !mp3Player.paused){
-    // 再生中なのに音量が極端に低い場合は修正
-    if(mp3Player.volume < 0.05){
-      mp3Player.volume = volume;
-    }
+  const now = Date.now();
+
+  // 再生中でなければ監視しない
+  if(!isPlaying || !mp3Player || mp3Player.paused){
+    _wdLastTime = mp3Player ? mp3Player.currentTime : 0;
+    _wdStallCount = 0;
+    return;
+  }
+  // 既存の最低音量補正は維持（極端に低いだけのケース）
+  if(mp3Player.volume < 0.05 && !announcePlaying){
+    mp3Player.volume = volume;
+  }
+  // アナウンス中／クールダウン中／曲切り替え直後は誤検知を避けてスキップ
+  if(announcePlaying || now < _wdCooldownUntil || mp3Player.seeking || mp3Player.readyState < 3){
+    _wdLastTime = mp3Player.currentTime;
+    _wdStallCount = 0;
+    return;
+  }
+  // 曲が自然終了に近い末尾はスキップ（ended処理に任せる）
+  if(mp3Player.duration && (mp3Player.duration - mp3Player.currentTime) < 1.5){
+    _wdLastTime = mp3Player.currentTime;
+    _wdStallCount = 0;
+    return;
+  }
+
+  const cur = mp3Player.currentTime;
+  // 再生中なのに位置がほぼ進んでいない → 出力経路断の疑い
+  if(Math.abs(cur - _wdLastTime) < 0.05){
+    _wdStallCount++;
+  } else {
+    _wdStallCount = 0;
+  }
+  _wdLastTime = cur;
+
+  // 2回連続（約4秒）停滞したら pause→play を自動で打ち直す
+  if(_wdStallCount >= 2){
+    _wdStallCount = 0;
+    _wdCooldownUntil = now + 6000;   // 連続発動を防ぐクールダウン
+    const pos = mp3Player.currentTime;
+    try{
+      mp3Player.pause();
+      setTimeout(() => {
+        try{
+          // 位置がずれていたら戻す
+          if(Math.abs(mp3Player.currentTime - pos) > 0.3){
+            mp3Player.currentTime = pos;
+          }
+        }catch(e){}
+        mp3Player.volume = announcePlaying ? mp3Player.volume : volume;
+        const p = mp3Player.play();
+        if(p && p.catch) p.catch(()=>{});
+      }, 150);
+    }catch(e){}
   }
 }, 2000);
 
@@ -2328,6 +2388,15 @@ if(navigator.mediaDevices && navigator.mediaDevices.addEventListener){
         mp3Player.volume = volume;
         if(mp3Player.paused){
           mp3Player.play().catch(()=>{});
+        } else {
+          // 経路が切り替わった直後の無音化に備え、軽く打ち直す
+          const pos = mp3Player.currentTime;
+          mp3Player.pause();
+          setTimeout(() => {
+            try{ if(Math.abs(mp3Player.currentTime - pos) > 0.3) mp3Player.currentTime = pos; }catch(e){}
+            mp3Player.volume = volume;
+            mp3Player.play().catch(()=>{});
+          }, 150);
         }
       }
     }, 500);
