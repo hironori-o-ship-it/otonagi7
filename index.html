@@ -1661,6 +1661,10 @@ function shouldSkipPomodoroMessage() {
   // 休憩モード中（小休憩・長休憩）は「お疲れ様です」を出さない
   if (currentMode === 'short' || currentMode === 'long') return true;
 
+  // 昼休憩の時間帯（12:15〜13:15）は休憩中なので「お疲れ様です」を出さない
+  // ※開始1分前から終了1分後まで含めて確実に抑制
+  if (totalMin >= 12 * 60 + 14 && totalMin <= 13 * 60 + 16) return true;
+
   // 自動タイマーONの時刻＝休憩開始。その時刻から休憩終了（+15分）までは
   // 休憩中なので「お疲れ様です」を出さない（喋りのラグも考慮して +16分まで）
   const autoTimerTimes = announcements
