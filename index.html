@@ -926,9 +926,7 @@ mp3Player.addEventListener('ended',()=>{
     if(playMode==='select'){mp3Player.currentTime=0;mp3Player.play();}
     else if(playMode==='random'){
       if(lib.length===1){mp3Player.currentTime=0;mp3Player.play();return;}
-      if(shuffleQueue.length===0)buildShuffleQueue(lib);
       const nextTrack=getNextFromQueue(lib);
-      shufflePending = false;
       playDriveTrack(nextTrack,currentBgmTab);
       cycleBg();
     }else{
@@ -1373,7 +1371,14 @@ async function playDriveTrack(track,type){
     // 音量を確実に設定してから再生（アナウンスとの競合防止）
     setTimeout(() => {
       mp3Player.volume=volume;
-      mp3Player.play().catch(()=>{});
+      const p=mp3Player.play();
+      if(p&&p.catch)p.catch(()=>{
+        // 再生開始に失敗 → 1回だけリトライ、それでもダメなら次の曲へ
+        setTimeout(()=>{
+          const p2=mp3Player.play();
+          if(p2&&p2.catch)p2.catch(()=>{ recoverToNextTrack('play-fail'); });
+        }, 600);
+      });
     }, 100);
     updateNowPlaying();
     updateViz();
@@ -1381,7 +1386,8 @@ async function playDriveTrack(track,type){
   }catch(e){
     if(statusEl)statusEl.textContent='✕';
     console.error('Drive track error:',e);
-    alert('曲の読み込みに失敗しました。ファイルの共有設定を確認してください。');
+    // 取得失敗時は次の曲へ自動で送る（リスト先頭で止まらないように）
+    recoverToNextTrack('fetch-fail');
   }
 }
 
@@ -2273,7 +2279,7 @@ async function init(){
   // カウントダウンメッセージ復元
   try{
     const msg15=localStorage.getItem(STORAGE_KEY+'cdMsg15');
-    if(msg15)document.getElementById('cdMsg15').value=msg15;
+    if(msg15&&document.getElementById('cdMsg15'))document.getElementById('cdMsg15').value=msg15;
     // 自由設定タイマー1〜5の復元
     for(let i=1;i<=5;i++){
       const m=localStorage.getItem(STORAGE_KEY+'cdCustomMin'+i);
@@ -2312,14 +2318,77 @@ function refreshApp(){
   }
 }
 
+// ===== 再生エラー自動復旧（曲名が消える系の停止に対応）=====
+// 共通：今の曲が再生不能になったとき、次の曲へ自動で送る
+function recoverToNextTrack(reason){
+  // アナウンス中／非再生中は何もしない（誤作動防止）
+  if(announcePlaying) return;
+  if(!isPlaying) return;
+  try{
+    if(isDriveTrack){
+      const lib = currentBgmTab==='personal' ? [...personalTracks] : [...sharedTracks];
+      if(lib.length===0){
+        const p=mp3Player.play(); if(p&&p.catch)p.catch(()=>{});
+        return;
+      }
+      if(playMode==='select'){
+        // 選択モードは同じ曲をリトライ
+        try{ mp3Player.currentTime=0; }catch(e){}
+        const p=mp3Player.play(); if(p&&p.catch)p.catch(()=>{});
+        return;
+      }
+      let nextTrack=null;
+      if(playMode==='random'){
+        nextTrack = (lib.length===1) ? lib[0] : getNextFromQueue(lib);
+      } else {
+        const idx = currentDriveTrack ? lib.findIndex(t=>t.id===currentDriveTrack.id) : -1;
+        nextTrack = lib[(idx+1)%lib.length];
+      }
+      if(nextTrack){ playDriveTrack(nextTrack, currentBgmTab); cycleBg(); }
+    } else {
+      // ローカル曲
+      if(playMode==='select'){
+        try{ mp3Player.currentTime=0; }catch(e){}
+        const p=mp3Player.play(); if(p&&p.catch)p.catch(()=>{});
+        return;
+      }
+      const next=getNextTrack();
+      if(next!==null && tracks[next]){
+        selectedTrack=next; highlightTrack(); updateNowPlaying();
+        mp3Player.src=tracks[next].data; mp3Player.volume=volume; mp3Player.loop=false;
+        const p=mp3Player.play(); if(p&&p.catch)p.catch(()=>{});
+        cycleBg();
+      } else {
+        const p=mp3Player.play(); if(p&&p.catch)p.catch(()=>{});
+      }
+    }
+  }catch(e){}
+}
+
+// 再生エラー（デコード失敗・ネットワーク中断など）→ 次の曲へ
+mp3Player.addEventListener('error', ()=>{ recoverToNextTrack('error'); });
+// データ供給が止まった（stalled）→ 少し待って復旧、ダメなら次曲へ
+let _stalledTimer=null;
+mp3Player.addEventListener('stalled', ()=>{
+  if(_stalledTimer) return;
+  _stalledTimer=setTimeout(()=>{
+    _stalledTimer=null;
+    if(isPlaying && !announcePlaying && mp3Player.paused){
+      const p=mp3Player.play(); if(p&&p.catch)p.catch(()=>{ recoverToNextTrack('stalled'); });
+    }
+  }, 3000);
+});
+
 // ===== 無音復活ウォッチドッグ（出力経路断の自動復旧）=====
 // 症状：BGMの再生位置(currentTime)は止まっていないのに音だけ出ない
 //      （Bluetooth経路が一瞬切れ、<audio>が無音の出力先に繋がったまま再生継続）。
 // 対策：再生中にcurrentTimeの進行を監視し、止まっていたら pause→play を
 //      自動で打ち直して出力先を取り直す（手動の「一旦止めて再生」の自動化）。
+//      pause→play を数回繰り返しても直らなければ、最終手段として次の曲へ送る。
 let announcePlaying = false;      // アナウンス・時報で意図的にBGMを絞っている区間
 let _wdLastTime = 0;              // 前回チェック時の再生位置
 let _wdStallCount = 0;            // 進行停止が連続した回数
+let _wdRecoverTries = 0;          // pause→play を試みた回数
 let _wdCooldownUntil = 0;         // 復旧後のクールダウン期限(ms)
 
 setInterval(() => {
@@ -2354,13 +2423,23 @@ setInterval(() => {
     _wdStallCount++;
   } else {
     _wdStallCount = 0;
+    _wdRecoverTries = 0;   // 正常に進んだら復旧カウンタをリセット
   }
   _wdLastTime = cur;
 
-  // 2回連続（約4秒）停滞したら pause→play を自動で打ち直す
+  // 2回連続（約4秒）停滞したら復旧アクション
   if(_wdStallCount >= 2){
     _wdStallCount = 0;
     _wdCooldownUntil = now + 6000;   // 連続発動を防ぐクールダウン
+
+    // 3回 pause→play しても直らない場合は、最終手段として次の曲へ送る
+    if(_wdRecoverTries >= 3){
+      _wdRecoverTries = 0;
+      recoverToNextTrack('watchdog-giveup');
+      return;
+    }
+    _wdRecoverTries++;
+
     const pos = mp3Player.currentTime;
     try{
       mp3Player.pause();
